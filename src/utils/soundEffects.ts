@@ -27,8 +27,8 @@ class SoundEffects {
         oscillator.type = 'sine';
         
         gainNode.gain.setValueAtTime(0, ctx.currentTime);
-        gainNode.gain.linearRampToTimeAtTime(0.1, ctx.currentTime + 0.01);
-        gainNode.gain.exponentialRampToTimeAtTime(0.001, ctx.currentTime + 0.3);
+        gainNode.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.01);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
         
         oscillator.start(ctx.currentTime);
         oscillator.stop(ctx.currentTime + 0.3);
@@ -46,12 +46,12 @@ class SoundEffects {
     gainNode.connect(ctx.destination);
     
     oscillator.frequency.setValueAtTime(200, ctx.currentTime);
-    oscillator.frequency.exponentialRampToTimeAtTime(80, ctx.currentTime + 0.2);
+    oscillator.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.2);
     oscillator.type = 'sine';
     
     gainNode.gain.setValueAtTime(0, ctx.currentTime);
-    gainNode.gain.linearRampToTimeAtTime(0.05, ctx.currentTime + 0.01);
-    gainNode.gain.exponentialRampToTimeAtTime(0.001, ctx.currentTime + 0.2);
+    gainNode.gain.linearRampToValueAtTime(0.05, ctx.currentTime + 0.01);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
     
     oscillator.start(ctx.currentTime);
     oscillator.stop(ctx.currentTime + 0.2);
@@ -74,8 +74,8 @@ class SoundEffects {
         oscillator.type = 'triangle';
         
         gainNode.gain.setValueAtTime(0, ctx.currentTime);
-        gainNode.gain.linearRampToTimeAtTime(0.08, ctx.currentTime + 0.01);
-        gainNode.gain.exponentialRampToTimeAtTime(0.001, ctx.currentTime + 0.4);
+        gainNode.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 0.01);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
         
         oscillator.start(ctx.currentTime);
         oscillator.stop(ctx.currentTime + 0.4);
@@ -96,8 +96,8 @@ class SoundEffects {
     oscillator.type = 'square';
     
     gainNode.gain.setValueAtTime(0, ctx.currentTime);
-    gainNode.gain.linearRampToTimeAtTime(0.1, ctx.currentTime + 0.01);
-    gainNode.gain.exponentialRampToTimeAtTime(0.001, ctx.currentTime + 0.15);
+    gainNode.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.01);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
     
     oscillator.start(ctx.currentTime);
     oscillator.stop(ctx.currentTime + 0.15);
