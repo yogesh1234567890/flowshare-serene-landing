@@ -3,7 +3,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Upload, QrCode, FileUp, Download, Progress as ProgressIcon } from 'lucide-react';
+import { Upload, QrCode, FileUp, Download } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import QRGenerator from './QRGenerator';
 import ConnectionCode from './ConnectionCode';

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Progress } from '@/components/ui/progress';
-import { File, Progress as ProgressIcon } from 'lucide-react';
+import { File, RotateCw } from 'lucide-react';
 
 interface FileWithProgress {
   file: File;
@@ -61,7 +61,7 @@ const UploadProgress = ({ fileItem }: UploadProgressProps) => {
         </div>
         <div className="flex items-center gap-2">
           {status === 'encrypting' && (
-            <ProgressIcon className="w-4 h-4 text-yellow-500 animate-spin" />
+            <RotateCw className="w-4 h-4 text-yellow-500 animate-spin" />
           )}
           <span className={`text-xs font-medium ${getStatusColor()}`}>
             {getStatusText()}
