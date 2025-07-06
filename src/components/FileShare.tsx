@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
@@ -8,6 +8,7 @@ import FileDropZone from './FileDropZone';
 import UploadProgress from './UploadProgress';
 import ConnectionCode from './ConnectionCode';
 import QRGenerator from './QRGenerator';
+import { useWebRTC } from '@/hooks/useWebRTC';
 
 interface FileData {
   id: string;
@@ -21,8 +22,18 @@ interface FileData {
 
 const FileShare = () => {
   const [files, setFiles] = useState<FileData[]>([]);
-  const [connectionCode] = useState('ABC123');
+  const [connectionCode] = useState(`ROOM_${Math.random().toString(36).substr(2, 6).toUpperCase()}`);
   const [isConnected, setIsConnected] = useState(false);
+  const { connectionState, isDataChannelOpen, initializeAsSender, sendFile } = useWebRTC();
+
+  useEffect(() => {
+    // Initialize WebRTC as sender when component mounts
+    initializeAsSender(connectionCode);
+  }, [connectionCode, initializeAsSender]);
+
+  useEffect(() => {
+    setIsConnected(connectionState === 'connected');
+  }, [connectionState]);
 
   const handleFileUpload = (uploadedFiles: File[]) => {
     const newFiles: FileData[] = uploadedFiles.map((file, index) => ({
@@ -36,14 +47,23 @@ const FileShare = () => {
     }));
 
     setFiles(prev => [...prev, ...newFiles]);
-    setIsConnected(true);
     
-    // Simulate upload progress
-    newFiles.forEach((file, index) => {
-      setTimeout(() => {
-        simulateUpload(file.id);
-      }, index * 500);
-    });
+    // Send files via WebRTC if channel is open
+    if (isDataChannelOpen) {
+      uploadedFiles.forEach((file, index) => {
+        setTimeout(() => {
+          sendFile(file);
+          simulateUpload(newFiles[index].id);
+        }, index * 500);
+      });
+    } else {
+      // Simulate upload progress for demo
+      newFiles.forEach((file, index) => {
+        setTimeout(() => {
+          simulateUpload(file.id);
+        }, index * 500);
+      });
+    }
   };
 
   const simulateUpload = (fileId: string) => {
@@ -106,29 +126,42 @@ const FileShare = () => {
         <div className="space-y-6">
           <FileDropZone onFilesAdded={handleFileUpload} />
           
-          {isConnected && (
-            <>
-              <div className="grid md:grid-cols-2 gap-6">
-                <ConnectionCode code={connectionCode} />
-                <QRGenerator value={connectionCode} />
-              </div>
-              
-              {files.length > 0 && (
-                <div className="space-y-4">
-                  {files.map((file) => (
-                    <UploadProgress 
-                      key={file.id} 
-                      fileItem={{
-                        file: new File([], file.name),
-                        progress: file.progress,
-                        status: file.status,
-                        id: file.id
-                      }} 
-                    />
-                  ))}
+          <div className="grid md:grid-cols-2 gap-6">
+            <ConnectionCode code={connectionCode} />
+            <QRGenerator value={connectionCode} />
+          </div>
+          
+          {connectionState !== 'disconnected' && (
+            <Card className="bg-white/50 backdrop-blur-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Connection Status:</span>
+                  <span className={`text-sm font-semibold ${
+                    connectionState === 'connected' ? 'text-green-600' : 
+                    connectionState === 'connecting' ? 'text-yellow-600' : 'text-gray-600'
+                  }`}>
+                    {connectionState === 'connected' ? '🟢 Connected' :
+                     connectionState === 'connecting' ? '🟡 Connecting...' : '⚪ Waiting'}
+                  </span>
                 </div>
-              )}
-            </>
+              </CardContent>
+            </Card>
+          )}
+
+          {files.length > 0 && (
+            <div className="space-y-4">
+              {files.map((file) => (
+                <UploadProgress 
+                  key={file.id} 
+                  fileItem={{
+                    file: new File([], file.name),
+                    progress: file.progress,
+                    status: file.status,
+                    id: file.id
+                  }} 
+                />
+              ))}
+            </div>
           )}
         </div>
       </div>

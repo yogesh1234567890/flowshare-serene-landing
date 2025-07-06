@@ -2,6 +2,7 @@
 import { useState, useCallback } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { soundEffects } from '@/utils/soundEffects';
+import { useWebRTC } from './useWebRTC';
 
 interface DownloadFile {
   name: string;
@@ -15,33 +16,64 @@ interface DownloadFile {
 export const useFileReceive = () => {
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const [downloadFile, setDownloadFile] = useState<DownloadFile | null>(null);
+  const { initializeAsReceiver, connectionState, isDataChannelOpen } = useWebRTC();
 
   const handleConnect = useCallback((connectionCode: string) => {
     setConnectionStatus('connecting');
     
-    // Simulate connection process
-    setTimeout(() => {
-      setConnectionStatus('connected');
-      soundEffects.playConnectSound();
-      toast({
-        title: "✨ Connected!",
-        description: "Successfully connected to sender",
-      });
-      
-      // Simulate receiving file info
-      setTimeout(() => {
-        setDownloadFile({
-          name: 'presentation.pdf',
-          size: 2547200, // 2.4 MB
-          progress: 0,
-          speed: '0 MB/s',
-          eta: 'Calculating...',
-          status: 'connecting'
+    // Initialize WebRTC connection as receiver
+    initializeAsReceiver(connectionCode);
+    
+    // Monitor connection state
+    const checkConnection = () => {
+      if (connectionState === 'connected') {
+        setConnectionStatus('connected');
+        soundEffects.playConnectSound();
+        toast({
+          title: "✨ Connected!",
+          description: "Successfully connected to sender",
         });
-        startDownload();
-      }, 1000);
-    }, 2000);
-  }, []);
+        
+        // Simulate receiving file info when data channel opens
+        if (isDataChannelOpen) {
+          setTimeout(() => {
+            setDownloadFile({
+              name: 'presentation.pdf',
+              size: 2547200, // 2.4 MB
+              progress: 0,
+              speed: '0 MB/s',
+              eta: 'Calculating...',
+              status: 'connecting'
+            });
+            startDownload();
+          }, 1000);
+        }
+      } else if (connectionState === 'failed') {
+        setConnectionStatus('disconnected');
+        toast({
+          title: "❌ Connection Failed",
+          description: "Could not connect to sender",
+          variant: "destructive"
+        });
+      }
+    };
+
+    // Check connection state periodically
+    const interval = setInterval(checkConnection, 1000);
+    
+    // Cleanup after 30 seconds
+    setTimeout(() => {
+      clearInterval(interval);
+      if (connectionStatus === 'connecting') {
+        setConnectionStatus('disconnected');
+        toast({
+          title: "⏱️ Connection Timeout",
+          description: "Please check the connection code and try again",
+          variant: "destructive"
+        });
+      }
+    }, 30000);
+  }, [connectionState, isDataChannelOpen, initializeAsReceiver, connectionStatus]);
 
   const startDownload = () => {
     let progress = 0;
