@@ -104,9 +104,9 @@ const FileShare = () => {
         </div>
 
         <div className="space-y-6">
-          {!isConnected ? (
-            <FileDropZone onFilesAdded={handleFileUpload} />
-          ) : (
+          <FileDropZone onFilesAdded={handleFileUpload} />
+          
+          {isConnected && (
             <>
               <div className="grid md:grid-cols-2 gap-6">
                 <ConnectionCode code={connectionCode} />
