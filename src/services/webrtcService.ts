@@ -16,6 +16,7 @@ export class WebRTCService {
   private onDataChannelOpen?: () => void;
   private onFileReceived?: (file: { name: string; size: number; data: ArrayBuffer }) => void;
   private onProgressUpdate?: (progress: number) => void;
+  private onWebSocketConnected?: () => void;
 
   constructor() {
     this.setupPeerConnection();
@@ -43,6 +44,7 @@ export class WebRTCService {
 
     this.pc.onconnectionstatechange = () => {
       if (this.pc && this.onConnectionStateChange) {
+        console.log('WebRTC connection state:', this.pc.connectionState);
         this.onConnectionStateChange(this.pc.connectionState);
       }
     };
@@ -67,10 +69,8 @@ export class WebRTCService {
       try {
         const message = JSON.parse(event.data);
         if (message.type === 'file-info') {
-          // Handle file info
           console.log('Receiving file:', message.data);
         } else if (message.type === 'file-chunk') {
-          // Handle file chunk
           if (this.onFileReceived) {
             this.onFileReceived(message.data);
           }
@@ -85,12 +85,14 @@ export class WebRTCService {
     onConnectionStateChange: (state: string) => void;
     onDataChannelOpen: () => void;
     onFileReceived: (file: { name: string; size: number; data: ArrayBuffer }) => void;
+    onWebSocketConnected?: () => void;
   }) {
     this.roomId = connectionCode;
     this.isSender = false;
     this.onConnectionStateChange = callbacks.onConnectionStateChange;
     this.onDataChannelOpen = callbacks.onDataChannelOpen;
     this.onFileReceived = callbacks.onFileReceived;
+    this.onWebSocketConnected = callbacks.onWebSocketConnected;
 
     this.connectWebSocket();
   }
@@ -99,12 +101,14 @@ export class WebRTCService {
     onConnectionStateChange: (state: string) => void;
     onDataChannelOpen: () => void;
     onProgressUpdate: (progress: number) => void;
+    onWebSocketConnected?: () => void;
   }) {
     this.roomId = connectionCode;
     this.isSender = true;
     this.onConnectionStateChange = callbacks.onConnectionStateChange;
     this.onDataChannelOpen = callbacks.onDataChannelOpen;
     this.onProgressUpdate = callbacks.onProgressUpdate;
+    this.onWebSocketConnected = callbacks.onWebSocketConnected;
 
     // Create data channel for sender
     if (this.pc) {
@@ -118,23 +122,29 @@ export class WebRTCService {
   }
 
   private connectWebSocket() {
+    console.log('Connecting to WebSocket:', `ws://localhost:8000/ws/${this.roomId}`);
     this.ws = new WebSocket(`ws://localhost:8000/ws/${this.roomId}`);
 
     this.ws.onopen = () => {
       console.log('WebSocket connected to room:', this.roomId);
+      console.log('Protocol switch successful (101 Switching Protocols)');
+      if (this.onWebSocketConnected) {
+        this.onWebSocketConnected();
+      }
     };
 
     this.ws.onmessage = async (event) => {
       try {
         const message: WebRTCMessage = JSON.parse(event.data);
+        console.log('Received WebSocket message:', message.type);
         await this.handleMessage(message);
       } catch (error) {
         console.error('Error handling WebSocket message:', error);
       }
     };
 
-    this.ws.onclose = () => {
-      console.log('WebSocket disconnected');
+    this.ws.onclose = (event) => {
+      console.log('WebSocket disconnected. Code:', event.code, 'Reason:', event.reason);
     };
 
     this.ws.onerror = (error) => {
@@ -147,6 +157,7 @@ export class WebRTCService {
 
     switch (message.type) {
       case 'offer':
+        console.log('Received offer, creating answer...');
         await this.pc.setRemoteDescription(new RTCSessionDescription(message.data));
         const answer = await this.pc.createAnswer();
         await this.pc.setLocalDescription(answer);
@@ -158,10 +169,12 @@ export class WebRTCService {
         break;
 
       case 'answer':
+        console.log('Received answer, setting remote description...');
         await this.pc.setRemoteDescription(new RTCSessionDescription(message.data));
         break;
 
       case 'ice-candidate':
+        console.log('Received ICE candidate...');
         await this.pc.addIceCandidate(new RTCIceCandidate(message.data));
         break;
     }
@@ -170,6 +183,7 @@ export class WebRTCService {
   async createOffer() {
     if (!this.pc) return;
 
+    console.log('Creating offer...');
     const offer = await this.pc.createOffer();
     await this.pc.setLocalDescription(offer);
     
@@ -186,7 +200,6 @@ export class WebRTCService {
       return;
     }
 
-    // Send file info first
     const fileInfo = {
       type: 'file-info',
       data: {
@@ -198,8 +211,7 @@ export class WebRTCService {
 
     this.dataChannel.send(JSON.stringify(fileInfo));
 
-    // Send file in chunks
-    const chunkSize = 16384; // 16KB chunks
+    const chunkSize = 16384;
     const reader = new FileReader();
     let offset = 0;
 
@@ -237,7 +249,10 @@ export class WebRTCService {
 
   private sendMessage(message: WebRTCMessage) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      console.log('Sending message:', message.type);
       this.ws.send(JSON.stringify(message));
+    } else {
+      console.warn('WebSocket not ready, message not sent:', message.type);
     }
   }
 

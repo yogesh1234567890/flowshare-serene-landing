@@ -17,7 +17,7 @@ type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
 
 export const useFileReceive = () => {
   const [downloadFile, setDownloadFile] = useState<DownloadFile | null>(null);
-  const { connectionState, isDataChannelOpen, initializeAsReceiver } = useWebRTC();
+  const { connectionState, isDataChannelOpen, isWebSocketConnected, initializeAsReceiver } = useWebRTC();
 
   // Map WebRTC connection state to our connection status with proper typing
   const connectionStatus: ConnectionStatus = (() => {
@@ -129,6 +129,7 @@ export const useFileReceive = () => {
     connectionStatus,
     connectionState,
     downloadFile,
-    handleConnect
+    handleConnect,
+    isWebSocketConnected
   };
 };

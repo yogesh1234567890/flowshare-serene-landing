@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { QrCode, Wifi, WifiOff } from 'lucide-react';
+import { QrCode, Wifi, WifiOff, Globe } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import QRScanner from './QRScanner';
 import ConnectionPulse from './ConnectionPulse';
@@ -13,9 +13,10 @@ interface ConnectionFormProps {
   onConnect: (code: string) => void;
   connectionStatus: 'disconnected' | 'connecting' | 'connected';
   connectionState?: string;
+  isWebSocketConnected?: boolean;
 }
 
-const ConnectionForm = ({ onConnect, connectionStatus, connectionState }: ConnectionFormProps) => {
+const ConnectionForm = ({ onConnect, connectionStatus, connectionState, isWebSocketConnected }: ConnectionFormProps) => {
   const [connectionCode, setConnectionCode] = useState('');
   const [showQRScanner, setShowQRScanner] = useState(false);
 
@@ -70,19 +71,54 @@ const ConnectionForm = ({ onConnect, connectionStatus, connectionState }: Connec
           </div>
         </div>
 
-        {/* WebRTC State Details */}
-        {connectionState && connectionState !== 'new' && (
-          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-            <div className="text-xs text-gray-600">
-              WebRTC State: <span className="font-mono font-medium">{connectionState}</span>
+        {/* Connection Status Details */}
+        <div className="space-y-3 mb-4">
+          {/* WebSocket Status */}
+          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center gap-2">
+              <Globe className="w-4 h-4" />
+              <span className="text-sm font-medium">WebSocket</span>
             </div>
-            {connectionCode && (
-              <div className="text-xs text-gray-600 mt-1">
-                Room: <span className="font-mono font-medium">{connectionCode}</span>
-              </div>
-            )}
+            <div className={`flex items-center gap-2 ${
+              isWebSocketConnected ? 'text-green-600' : 'text-gray-500'
+            }`}>
+              <div className={`w-2 h-2 rounded-full ${
+                isWebSocketConnected ? 'bg-green-500' : 'bg-gray-400'
+              }`}></div>
+              <span className="text-xs font-medium">
+                {isWebSocketConnected ? 'Connected (101)' : 'Disconnected'}
+              </span>
+            </div>
           </div>
-        )}
+
+          {/* WebRTC Status */}
+          {connectionState && connectionState !== 'new' && (
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-2">
+                <Wifi className="w-4 h-4" />
+                <span className="text-sm font-medium">WebRTC</span>
+              </div>
+              <div className={`flex items-center gap-2 ${
+                connectionState === 'connected' ? 'text-green-600' : 
+                connectionState === 'connecting' ? 'text-yellow-600' : 'text-gray-500'
+              }`}>
+                <div className={`w-2 h-2 rounded-full ${
+                  connectionState === 'connected' ? 'bg-green-500' : 
+                  connectionState === 'connecting' ? 'bg-yellow-500' : 'bg-gray-400'
+                }`}></div>
+                <span className="text-xs font-medium font-mono">{connectionState}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Room Code Display */}
+          {connectionCode && (
+            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+              <span className="text-sm font-medium">Room Code</span>
+              <span className="text-sm font-mono font-bold text-blue-600">{connectionCode}</span>
+            </div>
+          )}
+        </div>
 
         <div className="space-y-4">
           <div className="flex gap-3">

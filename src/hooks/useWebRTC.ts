@@ -6,6 +6,7 @@ import { toast } from '@/hooks/use-toast';
 export const useWebRTC = () => {
   const [connectionState, setConnectionState] = useState<string>('disconnected');
   const [isDataChannelOpen, setIsDataChannelOpen] = useState(false);
+  const [isWebSocketConnected, setIsWebSocketConnected] = useState(false);
   const webrtcService = useRef<WebRTCService | null>(null);
 
   const initializeAsSender = useCallback((roomId: string) => {
@@ -30,10 +31,16 @@ export const useWebRTC = () => {
       },
       onProgressUpdate: (progress) => {
         console.log('File transfer progress:', progress);
+      },
+      onWebSocketConnected: () => {
+        setIsWebSocketConnected(true);
+        toast({
+          title: "🌐 WebSocket Connected",
+          description: "Protocol switched successfully (101)",
+        });
       }
     });
 
-    // Create offer to start connection
     setTimeout(() => {
       webrtcService.current?.createOffer();
     }, 1000);
@@ -65,6 +72,13 @@ export const useWebRTC = () => {
           title: "📁 File Received",
           description: file.name,
         });
+      },
+      onWebSocketConnected: () => {
+        setIsWebSocketConnected(true);
+        toast({
+          title: "🌐 WebSocket Connected",
+          description: "Protocol switched successfully (101)",
+        });
       }
     });
   }, []);
@@ -82,11 +96,13 @@ export const useWebRTC = () => {
     }
     setConnectionState('disconnected');
     setIsDataChannelOpen(false);
+    setIsWebSocketConnected(false);
   }, []);
 
   return {
     connectionState,
     isDataChannelOpen,
+    isWebSocketConnected,
     initializeAsSender,
     initializeAsReceiver,
     sendFile,
