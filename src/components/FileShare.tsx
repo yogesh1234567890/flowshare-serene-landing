@@ -105,7 +105,7 @@ const FileShare = () => {
 
         <div className="space-y-6">
           {!isConnected ? (
-            <FileDropZone onFileUpload={handleFileUpload} />
+            <FileDropZone onFilesAdded={handleFileUpload} />
           ) : (
             <>
               <div className="grid md:grid-cols-2 gap-6">
@@ -116,7 +116,15 @@ const FileShare = () => {
               {files.length > 0 && (
                 <div className="space-y-4">
                   {files.map((file) => (
-                    <UploadProgress key={file.id} file={file} />
+                    <UploadProgress 
+                      key={file.id} 
+                      fileItem={{
+                        file: new File([], file.name),
+                        progress: file.progress,
+                        status: file.status,
+                        id: file.id
+                      }} 
+                    />
                   ))}
                 </div>
               )}
