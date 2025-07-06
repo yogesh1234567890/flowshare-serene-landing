@@ -1,211 +1,127 @@
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Upload, QrCode, FileUp, Download } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
-import QRGenerator from './QRGenerator';
-import ConnectionCode from './ConnectionCode';
+import { Link } from 'react-router-dom';
+import { Download, ArrowLeft } from 'lucide-react';
 import FileDropZone from './FileDropZone';
 import UploadProgress from './UploadProgress';
-import ConnectionPulse from './ConnectionPulse';
-import TransferHeartbeat from './TransferHeartbeat';
-import { soundEffects } from '@/utils/soundEffects';
+import ConnectionCode from './ConnectionCode';
+import QRGenerator from './QRGenerator';
 
-interface FileWithProgress {
-  file: File;
-  progress: number;
-  status: 'uploading' | 'encrypting' | 'complete' | 'error';
+interface FileData {
   id: string;
+  name: string;
+  size: number;
+  progress: number;
+  speed: string;
+  eta: string;
+  status: 'uploading' | 'complete' | 'error';
 }
 
 const FileShare = () => {
-  const [files, setFiles] = useState<FileWithProgress[]>([]);
-  const [connectionCode, setConnectionCode] = useState<string>('');
+  const [files, setFiles] = useState<FileData[]>([]);
+  const [connectionCode] = useState('ABC123');
   const [isConnected, setIsConnected] = useState(false);
-  const [showQR, setShowQR] = useState(false);
-  const [isGeneratingCode, setIsGeneratingCode] = useState(false);
 
-  // Generate a random connection code with animation
-  const generateConnectionCode = useCallback(() => {
-    setIsGeneratingCode(true);
-    
-    // Simulate code generation with typing effect
-    setTimeout(() => {
-      const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-      setConnectionCode(code);
-      setIsConnected(true);
-      setIsGeneratingCode(false);
-      
-      // Play connection sound
-      soundEffects.playConnectSound();
-      
-      toast({
-        title: "✨ Connection Ready",
-        description: `Share code: ${code}`,
-      });
-    }, 1500);
-  }, []);
-
-  // Handle file drop/selection with sound
-  const handleFiles = useCallback((newFiles: File[]) => {
-    // Play drop sound
-    soundEffects.playDropSound();
-    
-    const filesWithProgress: FileWithProgress[] = newFiles.map(file => ({
-      file,
+  const handleFileUpload = (uploadedFiles: File[]) => {
+    const newFiles: FileData[] = uploadedFiles.map((file, index) => ({
+      id: `file-${Date.now()}-${index}`,
+      name: file.name,
+      size: file.size,
       progress: 0,
-      status: 'uploading' as const,
-      id: Math.random().toString(36).substring(2)
+      speed: '0 MB/s',
+      eta: 'Calculating...',
+      status: 'uploading' as const
     }));
 
-    setFiles(prev => [...prev, ...filesWithProgress]);
-
-    // Generate connection code if not already connected
-    if (!isConnected) {
-      generateConnectionCode();
-    }
-
-    // Simulate upload progress for each file
-    filesWithProgress.forEach(fileItem => {
-      simulateUpload(fileItem.id);
+    setFiles(prev => [...prev, ...newFiles]);
+    setIsConnected(true);
+    
+    // Simulate upload progress
+    newFiles.forEach((file, index) => {
+      setTimeout(() => {
+        simulateUpload(file.id);
+      }, index * 500);
     });
-  }, [isConnected, generateConnectionCode]);
+  };
 
-  // Simulate upload progress with encryption phases
   const simulateUpload = (fileId: string) => {
     let progress = 0;
     const interval = setInterval(() => {
-      progress += Math.random() * 15;
+      progress += Math.random() * 10 + 5;
       
-      setFiles(prev => prev.map(f => {
-        if (f.id === fileId) {
-          if (progress >= 60 && progress < 80 && f.status === 'uploading') {
-            return { ...f, progress: Math.min(progress, 75), status: 'encrypting' };
-          } else if (progress >= 100) {
-            clearInterval(interval);
-            // Play completion sound
-            soundEffects.playCompleteSound();
-            toast({
-              title: "🎉 File Ready",
-              description: "File encrypted and ready to share",
-            });
-            return { ...f, progress: 100, status: 'complete' };
-          }
-          return { ...f, progress: Math.min(progress, 99) };
-        }
-        return f;
-      }));
-    }, 200);
+      if (progress >= 100) {
+        progress = 100;
+        clearInterval(interval);
+        setFiles(prev => prev.map(file => 
+          file.id === fileId 
+            ? { ...file, progress: 100, speed: '0 MB/s', eta: 'Complete', status: 'complete' }
+            : file
+        ));
+        return;
+      }
+
+      const speed = (Math.random() * 3 + 1).toFixed(1);
+      const eta = Math.round((100 - progress) / 10);
+      
+      setFiles(prev => prev.map(file => 
+        file.id === fileId 
+          ? { ...file, progress: Math.min(progress, 99), speed: `${speed} MB/s`, eta: `${eta}s` }
+          : file
+      ));
+    }, 300);
   };
-
-  const toggleQR = () => setShowQR(!showQR);
-
-  const hasActiveTransfers = files.some(f => f.status === 'uploading' || f.status === 'encrypting');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4">
-      <div className="max-w-4xl mx-auto pt-16">
+      <div className="max-w-2xl mx-auto pt-16">
+        {/* Navigation Header */}
+        <div className="flex items-center justify-between mb-8">
+          <Link 
+            to="/" 
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Home
+          </Link>
+          <Link 
+            to="/receive"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-200 hover:scale-105"
+          >
+            <Download className="w-4 h-4" />
+            Receive Files
+          </Link>
+        </div>
+
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-4 animate-fade-in">
-            Share Files Instantly
+            Send Files
           </h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto animate-fade-in">
-            Drag, drop, and share. Your files are encrypted and ready in seconds.
+          <p className="text-lg text-gray-600 animate-fade-in">
+            Share your files securely with anyone, anywhere
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* File Upload Section */}
-          <TransferHeartbeat isActive={hasActiveTransfers}>
-            <div className="space-y-6">
-              <FileDropZone onFilesAdded={handleFiles} />
+        <div className="space-y-6">
+          {!isConnected ? (
+            <FileDropZone onFileUpload={handleFileUpload} />
+          ) : (
+            <>
+              <div className="grid md:grid-cols-2 gap-6">
+                <ConnectionCode code={connectionCode} />
+                <QRGenerator value={connectionCode} />
+              </div>
               
               {files.length > 0 && (
-                <Card className="transform transition-all duration-500 hover:shadow-lg">
-                  <CardContent className="p-6">
-                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                      <FileUp className="w-5 h-5" />
-                      Files ({files.length})
-                    </h3>
-                    <div className="space-y-4">
-                      {files.map((fileItem) => (
-                        <UploadProgress key={fileItem.id} fileItem={fileItem} />
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          </TransferHeartbeat>
-
-          {/* Connection Section */}
-          <div className="space-y-6">
-            {isConnected ? (
-              <>
-                <div className="transform transition-all duration-500 animate-scale-in">
-                  <ConnectionCode code={connectionCode} />
+                <div className="space-y-4">
+                  {files.map((file) => (
+                    <UploadProgress key={file.id} file={file} />
+                  ))}
                 </div>
-                
-                <Card className="transform transition-all duration-500 hover:shadow-lg">
-                  <CardContent className="p-6 text-center">
-                    <div className="flex items-center justify-center mb-4">
-                      <ConnectionPulse isConnected={isConnected} isConnecting={false} />
-                      <h3 className="text-lg font-semibold ml-3">Share Options</h3>
-                    </div>
-                    <div className="flex gap-3 justify-center">
-                      <Button 
-                        onClick={toggleQR}
-                        variant="outline"
-                        className="flex items-center gap-2 transform transition-all duration-200 hover:scale-105"
-                      >
-                        <QrCode className="w-4 h-4" />
-                        {showQR ? 'Hide QR' : 'Show QR'}
-                      </Button>
-                      <Button 
-                        onClick={() => {
-                          navigator.clipboard.writeText(connectionCode);
-                          soundEffects.playQRScanSound();
-                          toast({ title: "📋 Copied!", description: "Connection code copied to clipboard" });
-                        }}
-                        className="flex items-center gap-2 transform transition-all duration-200 hover:scale-105"
-                      >
-                        <Download className="w-4 h-4" />
-                        Copy Code
-                      </Button>
-                    </div>
-                    
-                    {showQR && (
-                      <div className="mt-6 animate-fade-in">
-                        <QRGenerator value={connectionCode} />
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </>
-            ) : (
-              <Card className="border-dashed border-2">
-                <CardContent className="p-6 text-center">
-                  {isGeneratingCode ? (
-                    <div className="text-center space-y-4">
-                      <ConnectionPulse isConnected={false} isConnecting={true} />
-                      <p className="text-lg font-medium animate-pulse">Generating connection...</p>
-                      <div className="flex justify-center space-x-1">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-gray-500 mb-4">
-                      <Upload className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                      <p>Drop files to generate connection code</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-          </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>
