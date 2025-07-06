@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { soundEffects } from '@/utils/soundEffects';
 import { useWebRTC } from './useWebRTC';
@@ -14,66 +14,66 @@ interface DownloadFile {
 }
 
 export const useFileReceive = () => {
-  const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const [downloadFile, setDownloadFile] = useState<DownloadFile | null>(null);
-  const { initializeAsReceiver, connectionState, isDataChannelOpen } = useWebRTC();
+  const { connectionState, isDataChannelOpen, initializeAsReceiver } = useWebRTC();
+
+  // Map WebRTC connection state to our connection status
+  const connectionStatus = connectionState === 'connected' ? 'connected' : 
+                          connectionState === 'connecting' ? 'connecting' : 'disconnected';
 
   const handleConnect = useCallback((connectionCode: string) => {
-    setConnectionStatus('connecting');
+    console.log('Connecting to room:', connectionCode);
     
     // Initialize WebRTC connection as receiver
     initializeAsReceiver(connectionCode);
     
-    // Monitor connection state
-    const checkConnection = () => {
-      if (connectionState === 'connected') {
-        setConnectionStatus('connected');
-        soundEffects.playConnectSound();
-        toast({
-          title: "✨ Connected!",
-          description: "Successfully connected to sender",
-        });
-        
-        // Simulate receiving file info when data channel opens
-        if (isDataChannelOpen) {
-          setTimeout(() => {
-            setDownloadFile({
-              name: 'presentation.pdf',
-              size: 2547200, // 2.4 MB
-              progress: 0,
-              speed: '0 MB/s',
-              eta: 'Calculating...',
-              status: 'connecting'
-            });
-            startDownload();
-          }, 1000);
-        }
-      } else if (connectionState === 'failed') {
-        setConnectionStatus('disconnected');
+    toast({
+      title: "🔄 Connecting...",
+      description: `Attempting to connect to room: ${connectionCode}`,
+    });
+  }, [initializeAsReceiver]);
+
+  // Monitor connection state changes
+  useEffect(() => {
+    if (connectionState === 'connected') {
+      soundEffects.playConnectSound();
+      toast({
+        title: "✨ Connected!",
+        description: "Successfully connected to sender",
+      });
+    } else if (connectionState === 'failed' || connectionState === 'disconnected') {
+      if (connectionStatus !== 'disconnected') {
         toast({
           title: "❌ Connection Failed",
           description: "Could not connect to sender",
           variant: "destructive"
         });
       }
-    };
+    }
+  }, [connectionState, connectionStatus]);
 
-    // Check connection state periodically
-    const interval = setInterval(checkConnection, 1000);
-    
-    // Cleanup after 30 seconds
-    setTimeout(() => {
-      clearInterval(interval);
-      if (connectionStatus === 'connecting') {
-        setConnectionStatus('disconnected');
-        toast({
-          title: "⏱️ Connection Timeout",
-          description: "Please check the connection code and try again",
-          variant: "destructive"
+  // Monitor data channel state for file transfers
+  useEffect(() => {
+    if (isDataChannelOpen && connectionState === 'connected') {
+      toast({
+        title: "✅ Ready to Receive",
+        description: "Waiting for files...",
+      });
+      
+      // Simulate receiving file info when data channel opens (for demo)
+      setTimeout(() => {
+        setDownloadFile({
+          name: 'presentation.pdf',
+          size: 2547200, // 2.4 MB
+          progress: 0,
+          speed: '0 MB/s',
+          eta: 'Calculating...',
+          status: 'connecting'
         });
-      }
-    }, 30000);
-  }, [connectionState, isDataChannelOpen, initializeAsReceiver, connectionStatus]);
+        startDownload();
+      }, 2000);
+    }
+  }, [isDataChannelOpen, connectionState]);
 
   const startDownload = () => {
     let progress = 0;
@@ -115,6 +115,7 @@ export const useFileReceive = () => {
 
   return {
     connectionStatus,
+    connectionState,
     downloadFile,
     handleConnect
   };

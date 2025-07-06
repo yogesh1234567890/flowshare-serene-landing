@@ -8,7 +8,7 @@ import WaitingState from './WaitingState';
 import { useFileReceive } from '@/hooks/useFileReceive';
 
 const FileReceive = () => {
-  const { connectionStatus, downloadFile, handleConnect } = useFileReceive();
+  const { connectionStatus, connectionState, downloadFile, handleConnect } = useFileReceive();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4">
@@ -44,6 +44,7 @@ const FileReceive = () => {
           <ConnectionForm 
             onConnect={handleConnect}
             connectionStatus={connectionStatus}
+            connectionState={connectionState}
           />
 
           {downloadFile && (
