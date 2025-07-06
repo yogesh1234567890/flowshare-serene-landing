@@ -13,13 +13,27 @@ interface DownloadFile {
   status: 'connecting' | 'downloading' | 'complete' | 'error';
 }
 
+type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
+
 export const useFileReceive = () => {
   const [downloadFile, setDownloadFile] = useState<DownloadFile | null>(null);
   const { connectionState, isDataChannelOpen, initializeAsReceiver } = useWebRTC();
 
-  // Map WebRTC connection state to our connection status
-  const connectionStatus = connectionState === 'connected' ? 'connected' : 
-                          connectionState === 'connecting' ? 'connecting' : 'disconnected';
+  // Map WebRTC connection state to our connection status with proper typing
+  const connectionStatus: ConnectionStatus = (() => {
+    switch (connectionState) {
+      case 'connected':
+        return 'connected';
+      case 'connecting':
+        return 'connecting';
+      case 'new':
+      case 'disconnected':
+      case 'failed':
+      case 'closed':
+      default:
+        return 'disconnected';
+    }
+  })();
 
   const handleConnect = useCallback((connectionCode: string) => {
     console.log('Connecting to room:', connectionCode);
@@ -41,16 +55,14 @@ export const useFileReceive = () => {
         title: "✨ Connected!",
         description: "Successfully connected to sender",
       });
-    } else if (connectionState === 'failed' || connectionState === 'disconnected') {
-      if (connectionStatus !== 'disconnected') {
-        toast({
-          title: "❌ Connection Failed",
-          description: "Could not connect to sender",
-          variant: "destructive"
-        });
-      }
+    } else if (connectionState === 'failed' || connectionState === 'closed') {
+      toast({
+        title: "❌ Connection Failed",
+        description: "Could not connect to sender",
+        variant: "destructive"
+      });
     }
-  }, [connectionState, connectionStatus]);
+  }, [connectionState]);
 
   // Monitor data channel state for file transfers
   useEffect(() => {
