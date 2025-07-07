@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef } from 'react';
 import { WebRTCService } from '@/services/webrtcService';
 import { toast } from '@/hooks/use-toast';
@@ -8,6 +7,7 @@ export const useWebRTC = () => {
   const [isDataChannelOpen, setIsDataChannelOpen] = useState(false);
   const [isWebSocketConnected, setIsWebSocketConnected] = useState(false);
   const [fileTransferProgress, setFileTransferProgress] = useState<Map<string, number>>(new Map());
+  const [peerConnected, setPeerConnected] = useState(false);
   const webrtcService = useRef<WebRTCService | null>(null);
 
   const initializeAsSender = useCallback((roomId: string) => {
@@ -16,6 +16,7 @@ export const useWebRTC = () => {
     webrtcService.current.connectAsSender(roomId, {
       onConnectionStateChange: (state) => {
         setConnectionState(state);
+        setPeerConnected(state === 'connected');
         if (state === 'connected') {
           toast({
             title: "🔗 Peer Connected",
@@ -171,6 +172,7 @@ export const useWebRTC = () => {
     isDataChannelOpen,
     isWebSocketConnected,
     fileTransferProgress,
+    peerConnected,
     initializeAsSender,
     initializeAsReceiver,
     sendFile,

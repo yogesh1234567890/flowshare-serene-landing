@@ -1,7 +1,8 @@
 
 import React from 'react';
 import { Progress } from '@/components/ui/progress';
-import { File, RotateCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { File, RotateCw, X, Send } from 'lucide-react';
 
 interface FileWithProgress {
   file: File;
@@ -12,9 +13,10 @@ interface FileWithProgress {
 
 interface UploadProgressProps {
   fileItem: FileWithProgress;
+  onRemove?: () => void;
 }
 
-const UploadProgress = ({ fileItem }: UploadProgressProps) => {
+const UploadProgress = ({ fileItem, onRemove }: UploadProgressProps) => {
   const { file, progress, status } = fileItem;
 
   const getStatusColor = () => {
@@ -29,10 +31,10 @@ const UploadProgress = ({ fileItem }: UploadProgressProps) => {
 
   const getStatusText = () => {
     switch (status) {
-      case 'uploading': return 'Uploading...';
+      case 'uploading': return 'Sending...';
       case 'encrypting': return 'Encrypting...';
-      case 'complete': return 'Ready to share';
-      case 'error': return 'Upload failed';
+      case 'complete': return progress === 100 ? (status === 'complete' && progress === 100 ? 'Sent' : 'Ready to send') : 'Ready to send';
+      case 'error': return 'Transfer failed';
       default: return 'Preparing...';
     }
   };
@@ -46,7 +48,7 @@ const UploadProgress = ({ fileItem }: UploadProgressProps) => {
   };
 
   return (
-    <div className="border rounded-lg p-4 bg-white">
+    <div className="border rounded-lg p-4 bg-white hover:shadow-md transition-shadow">
       <div className="flex items-center gap-3 mb-3">
         <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
           <File className="w-5 h-5 text-gray-600" />
@@ -63,9 +65,22 @@ const UploadProgress = ({ fileItem }: UploadProgressProps) => {
           {status === 'encrypting' && (
             <RotateCw className="w-4 h-4 text-yellow-500 animate-spin" />
           )}
+          {status === 'uploading' && (
+            <Send className="w-4 h-4 text-blue-500 animate-pulse" />
+          )}
           <span className={`text-xs font-medium ${getStatusColor()}`}>
             {getStatusText()}
           </span>
+          {onRemove && status === 'complete' && progress === 100 && getStatusText() === 'Ready to send' && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onRemove}
+              className="h-6 w-6 p-0 hover:bg-red-50 hover:text-red-600"
+            >
+              <X className="w-3 h-3" />
+            </Button>
+          )}
         </div>
       </div>
       
@@ -74,14 +89,16 @@ const UploadProgress = ({ fileItem }: UploadProgressProps) => {
           <span>{Math.round(progress)}%</span>
           <span>
             {status === 'encrypting' ? '🔒 Encrypting' : 
-             status === 'complete' ? '✅ Encrypted' : '📤 Uploading'}
+             status === 'complete' ? (progress === 100 && getStatusText() === 'Sent' ? '✅ Sent' : '📁 Ready') : 
+             status === 'uploading' ? '📤 Sending' : '📁 Ready'}
           </span>
         </div>
         <Progress 
           value={progress} 
           className={`h-2 ${
             status === 'encrypting' ? '[&>div]:bg-yellow-500' :
-            status === 'complete' ? '[&>div]:bg-green-500' : '[&>div]:bg-blue-500'
+            status === 'complete' ? '[&>div]:bg-green-500' : 
+            status === 'uploading' ? '[&>div]:bg-blue-500' : '[&>div]:bg-gray-400'
           }`}
         />
       </div>

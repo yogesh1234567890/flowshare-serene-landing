@@ -3,12 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
-import { Download, ArrowLeft } from 'lucide-react';
+import { Download, ArrowLeft, Send, Users, CheckCircle } from 'lucide-react';
 import FileDropZone from './FileDropZone';
 import UploadProgress from './UploadProgress';
 import ConnectionCode from './ConnectionCode';
 import QRGenerator from './QRGenerator';
 import { useWebRTC } from '@/hooks/useWebRTC';
+import { toast } from '@/hooks/use-toast';
 
 interface FileData {
   id: string;
@@ -18,13 +19,15 @@ interface FileData {
   speed: string;
   eta: string;
   status: 'uploading' | 'complete' | 'error';
+  file: File;
 }
 
 const FileShare = () => {
   const [files, setFiles] = useState<FileData[]>([]);
   const [connectionCode] = useState(`ROOM_${Math.random().toString(36).substr(2, 6).toUpperCase()}`);
   const [isConnected, setIsConnected] = useState(false);
-  const { connectionState, isDataChannelOpen, initializeAsSender, sendFile } = useWebRTC();
+  const [receiverConnected, setReceiverConnected] = useState(false);
+  const { connectionState, isDataChannelOpen, initializeAsSender, sendFile, peerConnected } = useWebRTC();
 
   useEffect(() => {
     // Initialize WebRTC as sender when component mounts
@@ -33,50 +36,73 @@ const FileShare = () => {
 
   useEffect(() => {
     setIsConnected(connectionState === 'connected');
-  }, [connectionState]);
+    setReceiverConnected(connectionState === 'connected' && isDataChannelOpen);
+  }, [connectionState, isDataChannelOpen]);
 
   const handleFileUpload = (uploadedFiles: File[]) => {
     const newFiles: FileData[] = uploadedFiles.map((file, index) => ({
       id: `file-${Date.now()}-${index}`,
       name: file.name,
       size: file.size,
-      progress: 0,
+      progress: 100, // Files are immediately ready to send
       speed: '0 MB/s',
-      eta: 'Calculating...',
-      status: 'uploading' as const
+      eta: 'Ready to send',
+      status: 'complete' as const,
+      file: file
     }));
 
     setFiles(prev => [...prev, ...newFiles]);
     
-    // Send files via WebRTC if channel is open
-    if (isDataChannelOpen) {
-      uploadedFiles.forEach((file, index) => {
-        setTimeout(() => {
-          sendFile(file);
-          simulateUpload(newFiles[index].id);
-        }, index * 500);
-      });
-    } else {
-      // Simulate upload progress for demo
-      newFiles.forEach((file, index) => {
-        setTimeout(() => {
-          simulateUpload(file.id);
-        }, index * 500);
-      });
-    }
+    toast({
+      title: "📁 Files Ready",
+      description: `${uploadedFiles.length} file(s) ready to send`,
+    });
   };
 
-  const simulateUpload = (fileId: string) => {
+  const handleSendFiles = () => {
+    if (!isDataChannelOpen || files.length === 0) {
+      toast({
+        title: "❌ Cannot Send Files",
+        description: "Data channel not ready or no files selected",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Send all files
+    files.forEach((fileData, index) => {
+      setTimeout(() => {
+        sendFile(fileData.file);
+        
+        // Update file status to show it's being sent
+        setFiles(prev => prev.map(f => 
+          f.id === fileData.id 
+            ? { ...f, status: 'uploading' as const, progress: 0, eta: 'Sending...' }
+            : f
+        ));
+        
+        // Simulate sending progress
+        simulateFileTransfer(fileData.id);
+      }, index * 100);
+    });
+
+    toast({
+      title: "📤 Sending Files",
+      description: `Transferring ${files.length} file(s) via secure connection`,
+    });
+  };
+
+  const simulateFileTransfer = (fileId: string) => {
     let progress = 0;
     const interval = setInterval(() => {
-      progress += Math.random() * 10 + 5;
+      progress += Math.random() * 15 + 5;
       
       if (progress >= 100) {
         progress = 100;
         clearInterval(interval);
         setFiles(prev => prev.map(file => 
           file.id === fileId 
-            ? { ...file, progress: 100, speed: '0 MB/s', eta: 'Complete', status: 'complete' }
+            ? { ...file, progress: 100, speed: '0 MB/s', eta: 'Sent', status: 'complete' }
             : file
         ));
         return;
@@ -90,7 +116,11 @@ const FileShare = () => {
           ? { ...file, progress: Math.min(progress, 99), speed: `${speed} MB/s`, eta: `${eta}s` }
           : file
       ));
-    }, 300);
+    }, 200);
+  };
+
+  const removeFile = (fileId: string) => {
+    setFiles(prev => prev.filter(f => f.id !== fileId));
   };
 
   return (
@@ -131,11 +161,12 @@ const FileShare = () => {
             <QRGenerator value={connectionCode} />
           </div>
           
-          {connectionState !== 'disconnected' && (
-            <Card className="bg-white/50 backdrop-blur-sm">
-              <CardContent className="p-4">
+          {/* Connection Status Card */}
+          <Card className="bg-white/50 backdrop-blur-sm">
+            <CardContent className="p-4">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Connection Status:</span>
+                  <span className="text-sm font-medium">WebSocket Status:</span>
                   <span className={`text-sm font-semibold ${
                     connectionState === 'connected' ? 'text-green-600' : 
                     connectionState === 'connecting' ? 'text-yellow-600' : 'text-gray-600'
@@ -144,23 +175,76 @@ const FileShare = () => {
                      connectionState === 'connecting' ? '🟡 Connecting...' : '⚪ Waiting'}
                   </span>
                 </div>
-              </CardContent>
-            </Card>
-          )}
+                
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Receiver Status:</span>
+                  <span className={`text-sm font-semibold flex items-center gap-1 ${
+                    receiverConnected ? 'text-green-600' : 'text-gray-600'
+                  }`}>
+                    <Users className="w-4 h-4" />
+                    {receiverConnected ? 'Connected & Ready' : 'Waiting for receiver...'}
+                  </span>
+                </div>
 
+                {receiverConnected && (
+                  <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+                    <div className="flex items-center gap-2 text-green-700">
+                      <CheckCircle className="w-4 h-4" />
+                      <span className="text-sm font-medium">Secure connection established</span>
+                    </div>
+                    <p className="text-xs text-green-600 mt-1">
+                      End-to-end encrypted • Ready for file transfer
+                    </p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Files Section */}
           {files.length > 0 && (
             <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Files Ready ({files.length})
+                </h3>
+                {receiverConnected && files.some(f => f.status === 'complete') && (
+                  <Button 
+                    onClick={handleSendFiles}
+                    className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-2 animate-pulse"
+                  >
+                    <Send className="w-4 h-4" />
+                    Send All Files
+                  </Button>
+                )}
+              </div>
+              
               {files.map((file) => (
                 <UploadProgress 
                   key={file.id} 
                   fileItem={{
-                    file: new File([], file.name),
+                    file: file.file,
                     progress: file.progress,
                     status: file.status,
                     id: file.id
-                  }} 
+                  }}
+                  onRemove={() => removeFile(file.id)}
                 />
               ))}
+
+              {!receiverConnected && files.length > 0 && (
+                <Card className="bg-yellow-50 border-yellow-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 text-yellow-700">
+                      <Users className="w-5 h-5" />
+                      <span className="font-medium">Waiting for Receiver</span>
+                    </div>
+                    <p className="text-sm text-yellow-600 mt-1">
+                      Share the connection code or QR code with the receiver to start the transfer
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           )}
         </div>
