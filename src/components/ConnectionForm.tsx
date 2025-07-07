@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { QrCode, Wifi, WifiOff, Globe } from 'lucide-react';
+import { QrCode, Wifi, WifiOff, Globe, Shield } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import QRScanner from './QRScanner';
 import ConnectionPulse from './ConnectionPulse';
@@ -71,9 +71,8 @@ const ConnectionForm = ({ onConnect, connectionStatus, connectionState, isWebSoc
           </div>
         </div>
 
-        {/* Connection Status Details */}
+        {/* Single Connection Status Display */}
         <div className="space-y-3 mb-4">
-          {/* WebSocket Status */}
           <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
             <div className="flex items-center gap-2">
               <Globe className="w-4 h-4" />
@@ -86,32 +85,24 @@ const ConnectionForm = ({ onConnect, connectionStatus, connectionState, isWebSoc
                 isWebSocketConnected ? 'bg-green-500' : 'bg-gray-400'
               }`}></div>
               <span className="text-xs font-medium">
-                {isWebSocketConnected ? 'Connected (101)' : 'Disconnected'}
+                {isWebSocketConnected ? 'Connected' : 'Disconnected'}
               </span>
             </div>
           </div>
 
-          {/* WebRTC Status */}
-          {connectionState && connectionState !== 'new' && (
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+          {connectionState === 'connected' && (
+            <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
               <div className="flex items-center gap-2">
-                <Wifi className="w-4 h-4" />
-                <span className="text-sm font-medium">WebRTC</span>
+                <Shield className="w-4 h-4" />
+                <span className="text-sm font-medium">Secure Channel</span>
               </div>
-              <div className={`flex items-center gap-2 ${
-                connectionState === 'connected' ? 'text-green-600' : 
-                connectionState === 'connecting' ? 'text-yellow-600' : 'text-gray-500'
-              }`}>
-                <div className={`w-2 h-2 rounded-full ${
-                  connectionState === 'connected' ? 'bg-green-500' : 
-                  connectionState === 'connecting' ? 'bg-yellow-500' : 'bg-gray-400'
-                }`}></div>
-                <span className="text-xs font-medium font-mono">{connectionState}</span>
+              <div className="flex items-center gap-2 text-green-600">
+                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                <span className="text-xs font-medium">Ready for Transfer</span>
               </div>
             </div>
           )}
 
-          {/* Room Code Display */}
           {connectionCode && (
             <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
               <span className="text-sm font-medium">Room Code</span>
@@ -158,8 +149,8 @@ const ConnectionForm = ({ onConnect, connectionStatus, connectionState, isWebSoc
               </div>
             ) : connectionStatus === 'connected' ? (
               <div className="flex items-center gap-2">
-                <Wifi className="w-4 h-4" />
-                Connected
+                <Shield className="w-4 h-4" />
+                Ready to Receive
               </div>
             ) : 'Connect'}
           </Button>

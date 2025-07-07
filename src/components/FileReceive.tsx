@@ -42,7 +42,7 @@ const FileReceive = () => {
             Receive Files
           </h1>
           <p className="text-lg text-gray-600 animate-fade-in">
-            Enter the connection code or scan QR to receive files securely
+            Enter the connection code to receive files securely
           </p>
         </div>
 
@@ -58,7 +58,7 @@ const FileReceive = () => {
           {downloadFiles && downloadFiles.length > 0 && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-900">
-                File Downloads ({downloadFiles.length})
+                Receiving Files ({downloadFiles.length})
               </h3>
               {downloadFiles.map((downloadFile) => (
                 <DownloadProgress 

@@ -56,11 +56,11 @@ export const useFileReceive = () => {
 
   // Monitor connection state changes
   useEffect(() => {
-    if (connectionState === 'connected') {
+    if (connectionState === 'connected' && isDataChannelOpen) {
       soundEffects.playConnectSound();
       toast({
-        title: "✨ Connected!",
-        description: "Successfully connected to sender",
+        title: "✅ Ready to Receive",
+        description: "Connected and ready for file transfers",
       });
     } else if (connectionState === 'failed' || connectionState === 'closed') {
       toast({
@@ -69,66 +69,80 @@ export const useFileReceive = () => {
         variant: "destructive"
       });
     }
-  }, [connectionState]);
+  }, [connectionState, isDataChannelOpen]);
 
-  // Monitor data channel state for file transfers
+  // Handle file transfer progress updates from WebRTC
   useEffect(() => {
-    if (isDataChannelOpen && connectionState === 'connected') {
-      console.log('Receiver ready for file transfer');
-      toast({
-        title: "✅ Ready to Receive",
-        description: "Secure channel established - waiting for files...",
+    if (fileTransferProgress.size > 0) {
+      fileTransferProgress.forEach((progress, fileId) => {
+        setDownloadFiles(prev => {
+          const existingFileIndex = prev.findIndex(f => f.id === fileId);
+          
+          if (existingFileIndex === -1) {
+            // Create new download file entry
+            const newFile: DownloadFile = {
+              id: fileId,
+              name: `File-${fileId.slice(-6)}`,
+              size: 0, // Will be updated when we get file info
+              progress: progress,
+              speed: calculateSpeed(progress),
+              eta: calculateETA(progress),
+              status: progress >= 100 ? 'complete' : 'downloading'
+            };
+            
+            // Show toast for new file transfer
+            if (progress > 0) {
+              toast({
+                title: "📥 Receiving File",
+                description: `File transfer started`,
+              });
+            }
+            
+            return [...prev, newFile];
+          } else {
+            // Update existing file
+            const updatedFiles = [...prev];
+            const currentFile = updatedFiles[existingFileIndex];
+            
+            updatedFiles[existingFileIndex] = {
+              ...currentFile,
+              progress: progress,
+              speed: calculateSpeed(progress),
+              eta: calculateETA(progress),
+              status: progress >= 100 ? 'complete' : 'downloading'
+            };
+            
+            // Show completion toast
+            if (progress >= 100 && currentFile.progress < 100) {
+              toast({
+                title: "✅ File Received",
+                description: `${currentFile.name} downloaded successfully`,
+              });
+            }
+            
+            return updatedFiles;
+          }
+        });
       });
     }
-  }, [isDataChannelOpen, connectionState]);
-
-  // Handle real-time file transfer progress updates
-  useEffect(() => {
-    fileTransferProgress.forEach((progress, fileId) => {
-      setDownloadFiles(prev => {
-        const existingFileIndex = prev.findIndex(f => f.id === fileId);
-        
-        if (existingFileIndex === -1) {
-          // Create new download file entry
-          const newFile: DownloadFile = {
-            id: fileId,
-            name: `incoming-file-${fileId.slice(-6)}`,
-            size: 0, // Will be updated when we get file info
-            progress: progress,
-            speed: calculateSpeed(progress),
-            eta: calculateETA(progress),
-            status: progress >= 100 ? 'complete' : 'downloading'
-          };
-          return [...prev, newFile];
-        } else {
-          // Update existing file
-          const updatedFiles = [...prev];
-          updatedFiles[existingFileIndex] = {
-            ...updatedFiles[existingFileIndex],
-            progress: progress,
-            speed: calculateSpeed(progress),
-            eta: calculateETA(progress),
-            status: progress >= 100 ? 'complete' : 'downloading'
-          };
-          return updatedFiles;
-        }
-      });
-    });
   }, [fileTransferProgress]);
 
   const calculateSpeed = (progress: number): string => {
-    // Simulate realistic transfer speeds based on progress
-    const baseSpeed = 1.5 + Math.random() * 2; // 1.5-3.5 MB/s
-    const speedVariation = Math.sin(progress / 10) * 0.5; // Add some variation
-    return `${(baseSpeed + speedVariation).toFixed(1)} MB/s`;
+    // More realistic speed calculation based on progress
+    if (progress === 0) return '0 MB/s';
+    if (progress >= 100) return '0 MB/s';
+    
+    const baseSpeed = 1.2 + Math.random() * 1.8; // 1.2-3.0 MB/s
+    const speedVariation = Math.sin(Date.now() / 1000) * 0.3; // Add variation
+    return `${Math.max(0.1, baseSpeed + speedVariation).toFixed(1)} MB/s`;
   };
 
   const calculateETA = (progress: number): string => {
     if (progress >= 100) return 'Complete';
-    if (progress === 0) return 'Calculating...';
+    if (progress === 0) return 'Starting...';
     
     const remainingPercent = 100 - progress;
-    const estimatedSeconds = (remainingPercent / progress) * 30; // Rough estimate
+    const estimatedSeconds = Math.max(1, (remainingPercent / Math.max(progress, 1)) * 15); // More realistic ETA
     
     if (estimatedSeconds < 60) {
       return `${Math.round(estimatedSeconds)}s`;

@@ -151,6 +151,7 @@ export class WebRTCService {
   }
 
   private handleDataChannelMessage(message: any) {
+    console.log('Data channel message received:', message.type);
     switch (message.type) {
       case 'file-info':
         this.handleFileInfo(message.data);
@@ -169,8 +170,9 @@ export class WebRTCService {
     this.fileTransfers.set(fileInfo.id, fileInfo);
     this.receivedChunks.set(fileInfo.id, new Array(fileInfo.chunks));
     
+    // Immediately trigger progress update to show file transfer started
     if (this.onProgressUpdate) {
-      this.onProgressUpdate(0, fileInfo.id);
+      this.onProgressUpdate(1, fileInfo.id); // Start with 1% to indicate transfer began
     }
   }
 
@@ -189,7 +191,7 @@ export class WebRTCService {
 
     // Calculate progress
     const receivedChunks = chunks.filter(c => c !== undefined).length;
-    const progress = (receivedChunks / chunk.totalChunks) * 100;
+    const progress = Math.max(1, (receivedChunks / chunk.totalChunks) * 100);
     
     console.log(`File ${fileId} progress: ${progress.toFixed(1)}% (${receivedChunks}/${chunk.totalChunks})`);
     
@@ -421,6 +423,7 @@ export class WebRTCService {
       const offer = await this.pc.createOffer();
       await this.pc.setLocalDescription(offer);
       
+      console.log('Offer created and local description set');
       this.sendMessage({
         type: 'offer',
         data: offer,
@@ -433,7 +436,7 @@ export class WebRTCService {
 
   sendFile(file: File) {
     if (!this.dataChannel || this.dataChannel.readyState !== 'open') {
-      console.error('Data channel not ready');
+      console.error('Data channel not ready for file transfer');
       return;
     }
 
@@ -452,16 +455,25 @@ export class WebRTCService {
       chunks: totalChunks
     };
 
+    console.log('Sending file info:', fileInfo);
     this.dataChannel.send(JSON.stringify({
       type: 'file-info',
       data: fileInfo
     }));
 
-    // Send file in chunks
+    // Small delay to ensure file info is processed before chunks
+    setTimeout(() => {
+      this.sendFileChunks(file, fileId, chunkSize, totalChunks);
+    }, 100);
+  }
+
+  private sendFileChunks(file: File, fileId: string, chunkSize: number, totalChunks: number) {
     let chunkIndex = 0;
+    
     const sendNextChunk = () => {
       if (chunkIndex >= totalChunks) {
         // File transfer complete
+        console.log('All chunks sent, sending completion signal');
         this.dataChannel!.send(JSON.stringify({
           type: 'file-complete',
           data: { fileId }
@@ -487,6 +499,7 @@ export class WebRTCService {
             }
           };
 
+          console.log(`Sending chunk ${chunkIndex + 1}/${totalChunks} for ${file.name}`);
           this.dataChannel.send(JSON.stringify(chunkData));
           
           // Update progress
@@ -498,7 +511,7 @@ export class WebRTCService {
           chunkIndex++;
           
           // Use setTimeout to prevent blocking the main thread
-          setTimeout(sendNextChunk, 10);
+          setTimeout(sendNextChunk, 50); // Slightly longer delay for stability
         }
       };
 
