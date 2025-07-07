@@ -47,28 +47,28 @@ const FileDropZone = ({ onFilesAdded }: FileDropZoneProps) => {
   return (
     <Card className={`transition-all duration-200 ${isDragOver ? 'border-blue-400 bg-blue-50' : 'border-dashed'}`}>
       <CardContent 
-        className="p-12 text-center"
+        className="p-6 text-center"
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        <div className="space-y-4">
-          <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center transition-colors ${
+        <div className="space-y-3">
+          <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
             isDragOver ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'
           }`}>
-            <Upload className="w-8 h-8" />
+            <Upload className="w-6 h-6" />
           </div>
           
           <div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">
               {isDragOver ? 'Drop files here' : 'Drag & drop files'}
             </h3>
-            <p className="text-gray-500 mb-4">
+            <p className="text-sm text-gray-500 mb-2">
               or click to browse your files
             </p>
             
-            <Button onClick={openFileDialog} className="mx-auto">
-              <File className="w-4 h-4 mr-2" />
+            <Button onClick={openFileDialog} className="mx-auto h-8 px-3 text-sm">
+              <File className="w-4 h-4 mr-1" />
               Choose Files
             </Button>
           </div>
