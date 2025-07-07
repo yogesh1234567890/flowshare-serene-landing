@@ -119,16 +119,8 @@ const ConnectionForm = ({ onConnect, connectionStatus, connectionState, isWebSoc
               onChange={(e) => setConnectionCode(e.target.value.toUpperCase())}
               disabled={connectionStatus === 'connecting'}
               className="flex-1 text-center font-mono text-lg tracking-wider transition-all duration-200 focus:scale-105"
-              maxLength={6}
+              maxLength={15}
             />
-            <Button
-              onClick={() => setShowQRScanner(!showQRScanner)}
-              variant="outline"
-              disabled={connectionStatus === 'connecting'}
-              className="px-4 transform transition-all duration-200 hover:scale-105"
-            >
-              <QrCode className="w-4 h-4" />
-            </Button>
           </div>
 
           {showQRScanner && (

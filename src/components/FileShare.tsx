@@ -5,7 +5,6 @@ import { Download, ArrowLeft, Send } from 'lucide-react';
 import FileDropZone from './FileDropZone';
 import UploadProgress from './UploadProgress';
 import ConnectionCode from './ConnectionCode';
-import QRGenerator from './QRGenerator';
 import ConnectionPool from './ConnectionPool';
 import { useWebRTC } from '@/hooks/useWebRTC';
 import { toast } from '@/hooks/use-toast';
@@ -164,9 +163,8 @@ const FileShare = () => {
         <div className="space-y-6">
           <FileDropZone onFilesAdded={handleFileUpload} />
           
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid gap-6">
             <ConnectionCode code={connectionCode} />
-            <QRGenerator value={connectionCode} />
           </div>
           
           {/* Connection Pool - Replaces the old connection status card */}

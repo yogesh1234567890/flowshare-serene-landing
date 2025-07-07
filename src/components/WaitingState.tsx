@@ -11,7 +11,7 @@ const WaitingState = () => {
           <QrCode className="w-12 h-12 mx-auto opacity-50" />
           <p className="text-lg font-medium">Ready to Receive</p>
           <p className="text-sm">
-            Ask the sender for their connection code or scan their QR code to get started
+            Ask the sender for their connection code to get started
           </p>
         </div>
       </CardContent>
