@@ -1,6 +1,5 @@
-
 export interface WebRTCMessage {
-  type: 'offer' | 'answer' | 'ice-candidate' | 'connection-code' | 'file-info' | 'file-chunk' | 'file-complete';
+  type: 'offer' | 'answer' | 'ice-candidate' | 'connection-code' | 'file-info' | 'file-chunk' | 'file-complete' | 'receiver-joined' | 'receiver-ready';
   data: any;
   roomId: string;
 }
@@ -40,6 +39,7 @@ export class WebRTCService {
   private onProgressUpdate?: (progress: number, fileId?: string) => void;
   private onWebSocketConnected?: () => void;
   private onWebSocketError?: (error: Event) => void;
+  private onReceiverJoined?: () => void;
 
   constructor() {
     this.setupPeerConnection();
@@ -119,6 +119,16 @@ export class WebRTCService {
       console.log('Data channel opened:', channel.label);
       if (this.onDataChannelOpen) {
         this.onDataChannelOpen();
+      }
+      
+      // Send receiver ready confirmation
+      if (!this.isSender) {
+        console.log('Receiver data channel ready, sending confirmation');
+        this.sendMessage({
+          type: 'receiver-ready',
+          data: { ready: true, timestamp: Date.now() },
+          roomId: this.roomId
+        });
       }
     };
 
@@ -260,6 +270,7 @@ export class WebRTCService {
     onProgressUpdate: (progress: number, fileId?: string) => void;
     onWebSocketConnected?: () => void;
     onWebSocketError?: (error: Event) => void;
+    onReceiverJoined?: () => void;
   }) {
     this.roomId = connectionCode;
     this.isSender = true;
@@ -268,6 +279,7 @@ export class WebRTCService {
     this.onProgressUpdate = callbacks.onProgressUpdate;
     this.onWebSocketConnected = callbacks.onWebSocketConnected;
     this.onWebSocketError = callbacks.onWebSocketError;
+    this.onReceiverJoined = callbacks.onReceiverJoined;
 
     // Create data channel for sender with enhanced configuration
     if (this.pc) {
@@ -290,10 +302,20 @@ export class WebRTCService {
       this.ws.onopen = () => {
         console.log('WebSocket connected to room:', this.roomId);
         console.log('Protocol switch successful (101 Switching Protocols)');
-        this.reconnectAttempts = 0; // Reset on successful connection
+        this.reconnectAttempts = 0;
         
         if (this.onWebSocketConnected) {
           this.onWebSocketConnected();
+        }
+
+        // Send receiver joined notification if this is a receiver
+        if (!this.isSender) {
+          console.log('Receiver joined room, sending notification');
+          this.sendMessage({
+            type: 'receiver-joined',
+            data: { joined: true, timestamp: Date.now() },
+            roomId: this.roomId
+          });
         }
       };
 
@@ -366,6 +388,24 @@ export class WebRTCService {
         case 'ice-candidate':
           console.log('Received ICE candidate...');
           await this.pc.addIceCandidate(new RTCIceCandidate(message.data));
+          break;
+
+        case 'receiver-joined':
+          if (this.isSender) {
+            console.log('Receiver joined the room');
+            if (this.onReceiverJoined) {
+              this.onReceiverJoined();
+            }
+          }
+          break;
+
+        case 'receiver-ready':
+          if (this.isSender) {
+            console.log('Receiver is ready for file transfer');
+            if (this.onReceiverJoined) {
+              this.onReceiverJoined();
+            }
+          }
           break;
       }
     } catch (error) {

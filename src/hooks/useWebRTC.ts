@@ -8,6 +8,7 @@ export const useWebRTC = () => {
   const [isWebSocketConnected, setIsWebSocketConnected] = useState(false);
   const [fileTransferProgress, setFileTransferProgress] = useState<Map<string, number>>(new Map());
   const [peerConnected, setPeerConnected] = useState(false);
+  const [receiverConnected, setReceiverConnected] = useState(false);
   const webrtcService = useRef<WebRTCService | null>(null);
 
   const initializeAsSender = useCallback((roomId: string) => {
@@ -56,6 +57,14 @@ export const useWebRTC = () => {
           title: "🔌 Connection Error",
           description: "WebSocket connection failed",
           variant: "destructive"
+        });
+      },
+      onReceiverJoined: () => {
+        console.log('Receiver joined and ready');
+        setReceiverConnected(true);
+        toast({
+          title: "👥 Receiver Joined",
+          description: "Another device connected to your room",
         });
       }
     });
@@ -173,6 +182,7 @@ export const useWebRTC = () => {
     isWebSocketConnected,
     fileTransferProgress,
     peerConnected,
+    receiverConnected,
     initializeAsSender,
     initializeAsReceiver,
     sendFile,

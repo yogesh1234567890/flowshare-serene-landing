@@ -32,8 +32,8 @@ export const useFileReceive = () => {
       case 'connected':
         return 'connected';
       case 'connecting':
-        return 'connecting';
       case 'new':
+        return 'connecting';
       case 'disconnected':
       case 'failed':
       case 'closed':
@@ -43,14 +43,14 @@ export const useFileReceive = () => {
   })();
 
   const handleConnect = useCallback((connectionCode: string) => {
-    console.log('Connecting to room:', connectionCode);
+    console.log('Receiver connecting to room:', connectionCode);
     
     // Initialize WebRTC connection as receiver
     initializeAsReceiver(connectionCode);
     
     toast({
       title: "🔄 Connecting...",
-      description: `Attempting to connect to room: ${connectionCode}`,
+      description: `Joining room: ${connectionCode}`,
     });
   }, [initializeAsReceiver]);
 
@@ -74,9 +74,10 @@ export const useFileReceive = () => {
   // Monitor data channel state for file transfers
   useEffect(() => {
     if (isDataChannelOpen && connectionState === 'connected') {
+      console.log('Receiver ready for file transfer');
       toast({
         title: "✅ Ready to Receive",
-        description: "Waiting for files...",
+        description: "Secure channel established - waiting for files...",
       });
     }
   }, [isDataChannelOpen, connectionState]);

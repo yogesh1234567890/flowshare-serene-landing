@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -26,8 +25,14 @@ const FileShare = () => {
   const [files, setFiles] = useState<FileData[]>([]);
   const [connectionCode] = useState(`ROOM_${Math.random().toString(36).substr(2, 6).toUpperCase()}`);
   const [isConnected, setIsConnected] = useState(false);
-  const [receiverConnected, setReceiverConnected] = useState(false);
-  const { connectionState, isDataChannelOpen, initializeAsSender, sendFile, peerConnected } = useWebRTC();
+  const { 
+    connectionState, 
+    isDataChannelOpen, 
+    initializeAsSender, 
+    sendFile, 
+    peerConnected, 
+    receiverConnected 
+  } = useWebRTC();
 
   useEffect(() => {
     // Initialize WebRTC as sender when component mounts
@@ -36,7 +41,6 @@ const FileShare = () => {
 
   useEffect(() => {
     setIsConnected(connectionState === 'connected');
-    setReceiverConnected(connectionState === 'connected' && isDataChannelOpen);
   }, [connectionState, isDataChannelOpen]);
 
   const handleFileUpload = (uploadedFiles: File[]) => {
@@ -69,9 +73,12 @@ const FileShare = () => {
       return;
     }
 
+    console.log('Starting file transfer for', files.length, 'files');
+    
     // Send all files
     files.forEach((fileData, index) => {
       setTimeout(() => {
+        console.log('Sending file:', fileData.name);
         sendFile(fileData.file);
         
         // Update file status to show it's being sent
@@ -197,6 +204,15 @@ const FileShare = () => {
                     </p>
                   </div>
                 )}
+
+                {receiverConnected && !isDataChannelOpen && (
+                  <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
+                    <div className="flex items-center gap-2 text-yellow-700">
+                      <div className="w-4 h-4 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-sm font-medium">Establishing secure channel...</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -208,10 +224,10 @@ const FileShare = () => {
                 <h3 className="text-lg font-semibold text-gray-900">
                   Files Ready ({files.length})
                 </h3>
-                {receiverConnected && files.some(f => f.status === 'complete') && (
+                {receiverConnected && isDataChannelOpen && files.some(f => f.status === 'complete') && (
                   <Button 
                     onClick={handleSendFiles}
-                    className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-2 animate-pulse"
+                    className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-2 animate-pulse shadow-lg"
                   >
                     <Send className="w-4 h-4" />
                     Send All Files
@@ -241,6 +257,20 @@ const FileShare = () => {
                     </div>
                     <p className="text-sm text-yellow-600 mt-1">
                       Share the connection code or QR code with the receiver to start the transfer
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {receiverConnected && !isDataChannelOpen && files.length > 0 && (
+                <Card className="bg-blue-50 border-blue-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 text-blue-700">
+                      <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="font-medium">Establishing Secure Channel</span>
+                    </div>
+                    <p className="text-sm text-blue-600 mt-1">
+                      Setting up encrypted connection for file transfer...
                     </p>
                   </CardContent>
                 </Card>
