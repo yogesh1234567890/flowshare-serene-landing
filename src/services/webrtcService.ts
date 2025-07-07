@@ -381,8 +381,16 @@ export class WebRTCService {
           break;
 
         case 'answer':
-          console.log('Received answer, setting remote description...');
-          await this.pc.setRemoteDescription(new RTCSessionDescription(message.data));
+          if (this.pc.signalingState === 'have-local-offer') {
+            console.log('Received answer, setting remote description...');
+            await this.pc.setRemoteDescription(new RTCSessionDescription(message.data));
+          } else {
+            console.warn(
+              'Skipping setRemoteDescription(answer).',
+              'Expected state: have-local-offer, but current state is:',
+              this.pc.signalingState
+            );
+          }
           break;
 
         case 'ice-candidate':

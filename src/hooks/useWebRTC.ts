@@ -66,6 +66,7 @@ export const useWebRTC = () => {
           title: "👥 Receiver Joined",
           description: "Another device connected to your room",
         });
+        webrtcService.current?.createOffer();
       }
     });
 
