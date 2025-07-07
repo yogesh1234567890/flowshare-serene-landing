@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { soundEffects } from '@/utils/soundEffects';
@@ -26,19 +25,14 @@ export const useFileReceive = () => {
     initializeAsReceiver 
   } = useWebRTC();
 
-  // Map WebRTC connection state to our connection status
+  // Fix connection status mapping - use isDataChannelOpen for true connected state
   const connectionStatus: ConnectionStatus = (() => {
-    switch (connectionState) {
-      case 'connected':
-        return 'connected';
-      case 'connecting':
-      case 'new':
-        return 'connecting';
-      case 'disconnected':
-      case 'failed':
-      case 'closed':
-      default:
-        return 'disconnected';
+    if (isDataChannelOpen && connectionState === 'connected') {
+      return 'connected';
+    } else if (isWebSocketConnected && (connectionState === 'connecting' || connectionState === 'new')) {
+      return 'connecting';
+    } else {
+      return 'disconnected';
     }
   })();
 

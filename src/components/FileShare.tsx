@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
-import { Download, ArrowLeft, Send, Users, CheckCircle } from 'lucide-react';
+import { Download, ArrowLeft, Send } from 'lucide-react';
 import FileDropZone from './FileDropZone';
 import UploadProgress from './UploadProgress';
 import ConnectionCode from './ConnectionCode';
 import QRGenerator from './QRGenerator';
+import ConnectionPool from './ConnectionPool';
 import { useWebRTC } from '@/hooks/useWebRTC';
 import { toast } from '@/hooks/use-toast';
 
@@ -31,7 +31,8 @@ const FileShare = () => {
     initializeAsSender, 
     sendFile, 
     peerConnected, 
-    receiverConnected 
+    receiverConnected,
+    isWebSocketConnected
   } = useWebRTC();
 
   useEffect(() => {
@@ -168,54 +169,13 @@ const FileShare = () => {
             <QRGenerator value={connectionCode} />
           </div>
           
-          {/* Connection Status Card */}
-          <Card className="bg-white/50 backdrop-blur-sm">
-            <CardContent className="p-4">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">WebSocket Status:</span>
-                  <span className={`text-sm font-semibold ${
-                    connectionState === 'connected' ? 'text-green-600' : 
-                    connectionState === 'connecting' ? 'text-yellow-600' : 'text-gray-600'
-                  }`}>
-                    {connectionState === 'connected' ? '🟢 Connected' :
-                     connectionState === 'connecting' ? '🟡 Connecting...' : '⚪ Waiting'}
-                  </span>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Receiver Status:</span>
-                  <span className={`text-sm font-semibold flex items-center gap-1 ${
-                    receiverConnected ? 'text-green-600' : 'text-gray-600'
-                  }`}>
-                    <Users className="w-4 h-4" />
-                    {receiverConnected ? 'Connected & Ready' : 'Waiting for receiver...'}
-                  </span>
-                </div>
-
-                {receiverConnected && (
-                  <div className="bg-green-50 rounded-lg p-3 border border-green-200">
-                    <div className="flex items-center gap-2 text-green-700">
-                      <CheckCircle className="w-4 h-4" />
-                      <span className="text-sm font-medium">Secure connection established</span>
-                    </div>
-                    <p className="text-xs text-green-600 mt-1">
-                      End-to-end encrypted • Ready for file transfer
-                    </p>
-                  </div>
-                )}
-
-                {receiverConnected && !isDataChannelOpen && (
-                  <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
-                    <div className="flex items-center gap-2 text-yellow-700">
-                      <div className="w-4 h-4 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-sm font-medium">Establishing secure channel...</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          {/* Connection Pool - Replaces the old connection status card */}
+          <ConnectionPool
+            connectionState={connectionState}
+            isDataChannelOpen={isDataChannelOpen}
+            receiverConnected={receiverConnected}
+            isWebSocketConnected={isWebSocketConnected}
+          />
 
           {/* Files Section */}
           {files.length > 0 && (
@@ -247,34 +207,6 @@ const FileShare = () => {
                   onRemove={() => removeFile(file.id)}
                 />
               ))}
-
-              {!receiverConnected && files.length > 0 && (
-                <Card className="bg-yellow-50 border-yellow-200">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2 text-yellow-700">
-                      <Users className="w-5 h-5" />
-                      <span className="font-medium">Waiting for Receiver</span>
-                    </div>
-                    <p className="text-sm text-yellow-600 mt-1">
-                      Share the connection code or QR code with the receiver to start the transfer
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-
-              {receiverConnected && !isDataChannelOpen && files.length > 0 && (
-                <Card className="bg-blue-50 border-blue-200">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2 text-blue-700">
-                      <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                      <span className="font-medium">Establishing Secure Channel</span>
-                    </div>
-                    <p className="text-sm text-blue-600 mt-1">
-                      Setting up encrypted connection for file transfer...
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
             </div>
           )}
         </div>
