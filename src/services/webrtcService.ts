@@ -296,10 +296,8 @@ export class WebRTCService {
   }
 
   private connectWebSocket() {
-    console.log('Connecting to WebSocket:', `ws://localhost:8000/ws/${this.roomId}`);
-    
     try {
-      this.ws = new WebSocket(`ws://localhost:8000/ws/${this.roomId}`);
+      this.ws = new WebSocket(`${import.meta.env.VITE_WS_URL}/ws/${this.roomId}`);
 
       this.ws.onopen = () => {
         console.log('WebSocket connected to room:', this.roomId);
