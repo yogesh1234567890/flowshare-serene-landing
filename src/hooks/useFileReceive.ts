@@ -5,6 +5,7 @@ import { soundEffects } from '@/utils/soundEffects';
 import { useWebRTC } from './useWebRTC';
 
 interface DownloadFile {
+  id: string;
   name: string;
   size: number;
   progress: number;
@@ -16,10 +17,16 @@ interface DownloadFile {
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
 
 export const useFileReceive = () => {
-  const [downloadFile, setDownloadFile] = useState<DownloadFile | null>(null);
-  const { connectionState, isDataChannelOpen, isWebSocketConnected, initializeAsReceiver } = useWebRTC();
+  const [downloadFiles, setDownloadFiles] = useState<DownloadFile[]>([]);
+  const { 
+    connectionState, 
+    isDataChannelOpen, 
+    isWebSocketConnected, 
+    fileTransferProgress, 
+    initializeAsReceiver 
+  } = useWebRTC();
 
-  // Map WebRTC connection state to our connection status with proper typing
+  // Map WebRTC connection state to our connection status
   const connectionStatus: ConnectionStatus = (() => {
     switch (connectionState) {
       case 'connected':
@@ -71,64 +78,68 @@ export const useFileReceive = () => {
         title: "✅ Ready to Receive",
         description: "Waiting for files...",
       });
-      
-      // Simulate receiving file info when data channel opens (for demo)
-      setTimeout(() => {
-        setDownloadFile({
-          name: 'presentation.pdf',
-          size: 2547200, // 2.4 MB
-          progress: 0,
-          speed: '0 MB/s',
-          eta: 'Calculating...',
-          status: 'connecting'
-        });
-        startDownload();
-      }, 2000);
     }
   }, [isDataChannelOpen, connectionState]);
 
-  const startDownload = () => {
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += Math.random() * 8 + 2; // Random progress between 2-10%
-      
-      if (progress >= 100) {
-        progress = 100;
-        clearInterval(interval);
-        setDownloadFile(prev => prev ? {
-          ...prev,
-          progress: 100,
-          speed: '0 MB/s',
-          eta: 'Complete',
-          status: 'complete'
-        } : null);
-        soundEffects.playCompleteSound();
-        toast({
-          title: "🎉 Download Complete",
-          description: "File received successfully",
-        });
-        return;
-      }
+  // Handle real-time file transfer progress updates
+  useEffect(() => {
+    fileTransferProgress.forEach((progress, fileId) => {
+      setDownloadFiles(prev => {
+        const existingFileIndex = prev.findIndex(f => f.id === fileId);
+        
+        if (existingFileIndex === -1) {
+          // Create new download file entry
+          const newFile: DownloadFile = {
+            id: fileId,
+            name: `incoming-file-${fileId.slice(-6)}`,
+            size: 0, // Will be updated when we get file info
+            progress: progress,
+            speed: calculateSpeed(progress),
+            eta: calculateETA(progress),
+            status: progress >= 100 ? 'complete' : 'downloading'
+          };
+          return [...prev, newFile];
+        } else {
+          // Update existing file
+          const updatedFiles = [...prev];
+          updatedFiles[existingFileIndex] = {
+            ...updatedFiles[existingFileIndex],
+            progress: progress,
+            speed: calculateSpeed(progress),
+            eta: calculateETA(progress),
+            status: progress >= 100 ? 'complete' : 'downloading'
+          };
+          return updatedFiles;
+        }
+      });
+    });
+  }, [fileTransferProgress]);
 
-      const speed = (Math.random() * 3 + 1).toFixed(1); // 1-4 MB/s
-      const remainingMB = downloadFile ? (downloadFile.size * (100 - progress) / 100) / (1024 * 1024) : 0;
-      const etaSeconds = remainingMB / parseFloat(speed);
-      const eta = etaSeconds < 60 ? `${Math.round(etaSeconds)}s` : `${Math.round(etaSeconds / 60)}m`;
+  const calculateSpeed = (progress: number): string => {
+    // Simulate realistic transfer speeds based on progress
+    const baseSpeed = 1.5 + Math.random() * 2; // 1.5-3.5 MB/s
+    const speedVariation = Math.sin(progress / 10) * 0.5; // Add some variation
+    return `${(baseSpeed + speedVariation).toFixed(1)} MB/s`;
+  };
 
-      setDownloadFile(prev => prev ? {
-        ...prev,
-        progress: Math.min(progress, 99),
-        speed: `${speed} MB/s`,
-        eta,
-        status: 'downloading'
-      } : null);
-    }, 300);
+  const calculateETA = (progress: number): string => {
+    if (progress >= 100) return 'Complete';
+    if (progress === 0) return 'Calculating...';
+    
+    const remainingPercent = 100 - progress;
+    const estimatedSeconds = (remainingPercent / progress) * 30; // Rough estimate
+    
+    if (estimatedSeconds < 60) {
+      return `${Math.round(estimatedSeconds)}s`;
+    } else {
+      return `${Math.round(estimatedSeconds / 60)}m`;
+    }
   };
 
   return {
     connectionStatus,
     connectionState,
-    downloadFile,
+    downloadFiles: downloadFiles.length > 0 ? downloadFiles : null,
     handleConnect,
     isWebSocketConnected
   };

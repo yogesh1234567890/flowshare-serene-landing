@@ -8,7 +8,13 @@ import WaitingState from './WaitingState';
 import { useFileReceive } from '@/hooks/useFileReceive';
 
 const FileReceive = () => {
-  const { connectionStatus, connectionState, downloadFile, handleConnect, isWebSocketConnected } = useFileReceive();
+  const { 
+    connectionStatus, 
+    connectionState, 
+    downloadFiles, 
+    handleConnect, 
+    isWebSocketConnected 
+  } = useFileReceive();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4">
@@ -36,7 +42,7 @@ const FileReceive = () => {
             Receive Files
           </h1>
           <p className="text-lg text-gray-600 animate-fade-in">
-            Enter the connection code or scan QR to receive files
+            Enter the connection code or scan QR to receive files securely
           </p>
         </div>
 
@@ -48,11 +54,22 @@ const FileReceive = () => {
             isWebSocketConnected={isWebSocketConnected}
           />
 
-          {downloadFile && (
-            <DownloadProgress downloadFile={downloadFile} />
+          {/* Display multiple file downloads */}
+          {downloadFiles && downloadFiles.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                File Downloads ({downloadFiles.length})
+              </h3>
+              {downloadFiles.map((downloadFile) => (
+                <DownloadProgress 
+                  key={downloadFile.id}
+                  downloadFile={downloadFile} 
+                />
+              ))}
+            </div>
           )}
 
-          {connectionStatus === 'disconnected' && !downloadFile && (
+          {connectionStatus === 'disconnected' && !downloadFiles && (
             <WaitingState />
           )}
         </div>
