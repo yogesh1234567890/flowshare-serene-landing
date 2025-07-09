@@ -36,37 +36,6 @@ const FileReceive = () => {
             </p>
           </div>
 
-          {/* Stats Banner */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-            <Card className="text-center p-6 hover:shadow-lg transition-all duration-300 animate-scale-in" style={{ animationDelay: '0.1s' }}>
-              <div className="flex items-center justify-center mb-4">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Zap className="w-6 h-6 text-blue-600" />
-                </div>
-              </div>
-              <h3 className="font-semibold text-lg text-blue-600 mb-2">Lightning Fast</h3>
-              <p className="text-sm text-muted-foreground">Direct peer-to-peer transfer with no server delays</p>
-            </Card>
-            <Card className="text-center p-6 hover:shadow-lg transition-all duration-300 animate-scale-in" style={{ animationDelay: '0.2s' }}>
-              <div className="flex items-center justify-center mb-4">
-                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                  <Shield className="w-6 h-6 text-green-600" />
-                </div>
-              </div>
-              <h3 className="font-semibold text-lg text-green-600 mb-2">Bank-Grade Security</h3>
-              <p className="text-sm text-muted-foreground">End-to-end encryption protects your files</p>
-            </Card>
-            <Card className="text-center p-6 hover:shadow-lg transition-all duration-300 animate-scale-in" style={{ animationDelay: '0.3s' }}>
-              <div className="flex items-center justify-center mb-4">
-                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                  <Users className="w-6 h-6 text-purple-600" />
-                </div>
-              </div>
-              <h3 className="font-semibold text-lg text-purple-600 mb-2">Completely Private</h3>
-              <p className="text-sm text-muted-foreground">No files stored on our servers</p>
-            </Card>
-          </div>
-
           {/* Connection Status & Downloads */}
           {connectionStatus === 'connected' && downloadFiles && downloadFiles.length > 0 ? (
             /* Downloads Active State */

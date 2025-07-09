@@ -16,24 +16,6 @@ const Navbar = () => {
   };
 
   const navItems = [
-    { 
-      name: 'Home', 
-      href: '/', 
-      icon: Home, 
-      isActive: location.pathname === '/' 
-    },
-    { 
-      name: 'Send Files', 
-      href: '/share', 
-      icon: Upload,
-      isActive: location.pathname === '/share' 
-    },
-    { 
-      name: 'Receive Files', 
-      href: '/receive', 
-      icon: Download,
-      isActive: location.pathname === '/receive' 
-    },
   ];
 
   return (
@@ -64,17 +46,6 @@ const Navbar = () => {
                 <span>{item.name}</span>
               </Link>
             ))}
-            
-            {location.pathname === '/' && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => scrollToSection('how-it-works')}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                How it Works
-              </Button>
-            )}
           </div>
 
           {/* Mobile menu button */}
