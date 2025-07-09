@@ -23,7 +23,13 @@ const Footer = () => {
           <div>
             <h4 className="font-semibold mb-4 text-blue-400">Product</h4>
             <ul className="space-y-2 text-gray-400">
-              <li><a href="#" className="hover:text-white transition-colors">How it Works</a></li>
+               <li><a href="#how-it-works" className="hover:text-white transition-colors" onClick={(e) => {
+                 e.preventDefault();
+                 const element = document.getElementById('how-it-works');
+                 if (element) {
+                   element.scrollIntoView({ behavior: 'smooth' });
+                 }
+               }}>How it Works</a></li>
               <li><a href="#" className="hover:text-white transition-colors">Features</a></li>
               <li><a href="#" className="hover:text-white transition-colors">Security</a></li>
               <li><a href="#" className="hover:text-white transition-colors">API</a></li>

@@ -35,6 +35,12 @@ const Hero = () => {
             variant="outline" 
             size="lg" 
             className="text-lg px-8 py-4 rounded-full border-2 hover:bg-gray-50 transition-all duration-200"
+            onClick={() => {
+              const element = document.getElementById('how-it-works');
+              if (element) {
+                element.scrollIntoView({ behavior: 'smooth' });
+              }
+            }}
           >
             How it Works
           </Button>

@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
-import { Download, ArrowLeft, Send } from 'lucide-react';
+import { Download, ArrowLeft, Send, Zap, Shield, Users } from 'lucide-react';
 import FileDropZone from './FileDropZone';
 import UploadProgress from './UploadProgress';
 import ConnectionCode from './ConnectionCode';
 import ConnectionPool from './ConnectionPool';
+import Navbar from './Navbar';
 import { useWebRTC } from '@/hooks/useWebRTC';
 import { toast } from '@/hooks/use-toast';
 
@@ -131,82 +133,122 @@ const FileShare = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4">
-      <div className="max-w-2xl mx-auto pt-16">
-        {/* Navigation Header */}
-        <div className="flex items-center justify-between mb-8">
-          <Link 
-            to="/" 
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Home
-          </Link>
-          <Link 
-            to="/receive"
-            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-200 hover:scale-105"
-          >
-            <Download className="w-4 h-4" />
-            Receive Files
-          </Link>
-        </div>
-
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4 animate-fade-in">
-            Send Files
-          </h1>
-          <p className="text-lg text-gray-600 animate-fade-in">
-            Share your files securely with anyone, anywhere
-          </p>
-        </div>
-
-        <div className="space-y-6">
-          <FileDropZone onFilesAdded={handleFileUpload} />
-          
-          <div className="grid gap-6">
-            <ConnectionCode code={connectionCode} />
-          </div>
-          
-          {/* Connection Pool - Replaces the old connection status card */}
-          <ConnectionPool
-            connectionState={connectionState}
-            isDataChannelOpen={isDataChannelOpen}
-            receiverConnected={receiverConnected}
-            isWebSocketConnected={isWebSocketConnected}
-          />
-
-          {/* Files Section */}
-          {files.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Files Ready ({files.length})
-                </h3>
-                {receiverConnected && isDataChannelOpen && files.some(f => f.status === 'complete') && (
-                  <Button 
-                    onClick={handleSendFiles}
-                    className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-2 animate-pulse shadow-lg"
-                  >
-                    <Send className="w-4 h-4" />
-                    Send All Files
-                  </Button>
-                )}
-              </div>
-              
-              {files.map((file) => (
-                <UploadProgress 
-                  key={file.id} 
-                  fileItem={{
-                    file: file.file,
-                    progress: file.progress,
-                    status: file.status,
-                    id: file.id
-                  }}
-                  onRemove={() => removeFile(file.id)}
-                />
-              ))}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <Navbar />
+      <div className="pt-20 px-4">
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-teal-500 rounded-2xl mb-6">
+              <Send className="w-8 h-8 text-white" />
             </div>
-          )}
+            <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
+              Send Files
+            </h1>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Share your files securely with anyone, anywhere using peer-to-peer technology
+            </p>
+          </div>
+
+          {/* Stats Banner */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <Card className="text-center p-4">
+              <div className="flex items-center justify-center mb-2">
+                <Zap className="w-5 h-5 text-blue-500 mr-2" />
+                <span className="font-semibold text-blue-600">Instant</span>
+              </div>
+              <p className="text-sm text-muted-foreground">Direct peer-to-peer transfer</p>
+            </Card>
+            <Card className="text-center p-4">
+              <div className="flex items-center justify-center mb-2">
+                <Shield className="w-5 h-5 text-green-500 mr-2" />
+                <span className="font-semibold text-green-600">Secure</span>
+              </div>
+              <p className="text-sm text-muted-foreground">End-to-end encryption</p>
+            </Card>
+            <Card className="text-center p-4">
+              <div className="flex items-center justify-center mb-2">
+                <Users className="w-5 h-5 text-purple-500 mr-2" />
+                <span className="font-semibold text-purple-600">Private</span>
+              </div>
+              <p className="text-sm text-muted-foreground">No server storage</p>
+            </Card>
+          </div>
+
+          {/* Main Content Grid */}
+          <div className="grid lg:grid-cols-2 gap-8">
+            {/* Left Column - File Upload */}
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Send className="w-5 h-5" />
+                    Select Files
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <FileDropZone onFilesAdded={handleFileUpload} />
+                </CardContent>
+              </Card>
+
+              {/* Files Section */}
+              {files.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle>Files Ready ({files.length})</CardTitle>
+                      {receiverConnected && isDataChannelOpen && files.some(f => f.status === 'complete') && (
+                        <Button 
+                          onClick={handleSendFiles}
+                          className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-2 animate-pulse shadow-lg"
+                        >
+                          <Send className="w-4 h-4" />
+                          Send All Files
+                        </Button>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {files.map((file) => (
+                      <UploadProgress 
+                        key={file.id} 
+                        fileItem={{
+                          file: file.file,
+                          progress: file.progress,
+                          status: file.status,
+                          id: file.id
+                        }}
+                        onRemove={() => removeFile(file.id)}
+                      />
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* Right Column - Connection */}
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="w-5 h-5" />
+                    Connection Code
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ConnectionCode code={connectionCode} />
+                </CardContent>
+              </Card>
+
+              {/* Connection Pool */}
+              <ConnectionPool
+                connectionState={connectionState}
+                isDataChannelOpen={isDataChannelOpen}
+                receiverConnected={receiverConnected}
+                isWebSocketConnected={isWebSocketConnected}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>
