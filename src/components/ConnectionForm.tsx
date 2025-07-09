@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { QrCode, Wifi, WifiOff, Globe, Shield } from 'lucide-react';
+import { QrCode, Wifi, WifiOff, Globe, Shield, Users } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import QRScanner from './QRScanner';
 import ConnectionPulse from './ConnectionPulse';
@@ -55,15 +55,19 @@ const ConnectionForm = ({ onConnect, connectionStatus, connectionState, isWebSoc
   const statusDisplay = getConnectionStatusDisplay();
 
   return (
-    <Card className="transform transition-all duration-500 hover:shadow-lg">
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold">Connection</h3>
-          <div className="flex items-center gap-3">
-            <div className={`flex items-center gap-2 ${statusDisplay.color}`}>
-              {statusDisplay.icon}
-              <span className="text-sm font-medium">{statusDisplay.text}</span>
-            </div>
+    <div className="space-y-6">
+      <CardContent className="p-0">
+        {/* Connection Status */}
+        <div className="flex items-center justify-center mb-6">
+          <div className={`flex items-center gap-3 px-4 py-2 rounded-full border-2 transition-all duration-300 ${
+            connectionStatus === 'connected' 
+              ? 'border-green-200 bg-green-50 text-green-700' 
+              : connectionStatus === 'connecting'
+              ? 'border-yellow-200 bg-yellow-50 text-yellow-700'
+              : 'border-gray-200 bg-gray-50 text-gray-600'
+          }`}>
+            {statusDisplay.icon}
+            <span className="font-semibold">{statusDisplay.text}</span>
             <ConnectionPulse 
               isConnected={connectionStatus === 'connected'} 
               isConnecting={connectionStatus === 'connecting'} 
@@ -111,16 +115,27 @@ const ConnectionForm = ({ onConnect, connectionStatus, connectionState, isWebSoc
           )}
         </div>
 
+        {/* Connection Code Input */}
         <div className="space-y-4">
-          <div className="flex gap-3">
+          <div className="relative">
             <Input
               placeholder="Enter connection code (e.g., ABC123)"
               value={connectionCode}
               onChange={(e) => setConnectionCode(e.target.value.toUpperCase())}
               disabled={connectionStatus === 'connecting'}
-              className="flex-1 text-center font-mono text-lg tracking-wider transition-all duration-200 focus:scale-105"
+              className="text-center font-mono text-xl tracking-widest h-14 text-foreground placeholder:text-muted-foreground border-2 focus:border-primary transition-all duration-200"
               maxLength={15}
             />
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowQRScanner(!showQRScanner)}
+                className="h-8 w-8 p-0 hover:bg-muted"
+              >
+                <QrCode className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
 
           {showQRScanner && (
@@ -132,23 +147,29 @@ const ConnectionForm = ({ onConnect, connectionStatus, connectionState, isWebSoc
           <Button
             onClick={handleConnect}
             disabled={!connectionCode.trim() || connectionStatus === 'connecting'}
-            className="w-full transform transition-all duration-200 hover:scale-105"
+            className="w-full h-12 text-lg font-semibold transform transition-all duration-200 hover:scale-105 disabled:transform-none"
+            size="lg"
           >
             {connectionStatus === 'connecting' ? (
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <div className="flex items-center gap-3">
+                <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin"></div>
                 Connecting...
               </div>
             ) : connectionStatus === 'connected' ? (
-              <div className="flex items-center gap-2">
-                <Shield className="w-4 h-4" />
-                Ready to Receive
+              <div className="flex items-center gap-3">
+                <Shield className="w-5 h-5" />
+                Connected & Ready
               </div>
-            ) : 'Connect'}
+            ) : (
+              <div className="flex items-center gap-3">
+                <Users className="w-5 h-5" />
+                Connect to Sender
+              </div>
+            )}
           </Button>
         </div>
       </CardContent>
-    </Card>
+    </div>
   );
 };
 
