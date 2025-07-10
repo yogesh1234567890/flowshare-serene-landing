@@ -22,7 +22,27 @@ interface FileData {
 
 const FileShare = () => {
   const [files, setFiles] = useState<FileData[]>([]);
-  const [connectionCode] = useState(`ROOM_${Math.random().toString(36).substr(2, 6).toUpperCase()}`);
+  const [connectionCode, setConnectionCode] = useState(() => {
+    const savedCode = localStorage.getItem('connectionCode');
+    if (savedCode) return savedCode;
+
+    const newCode = `ROOM_${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+    localStorage.setItem('connectionCode', newCode);
+    return newCode;
+  });
+
+  const refreshConnectionCode = () => {
+    const newCode = `ROOM_${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+    setConnectionCode(newCode);
+    localStorage.setItem('connectionCode', newCode);
+    initializeAsSender(newCode);
+    
+    toast({
+      title: "🔄 New Code Generated",
+      description: `Connection code refreshed: ${newCode}`,
+    });
+  };
+
   const [isConnected, setIsConnected] = useState(false);
   const { 
     connectionState, 
@@ -164,7 +184,7 @@ const FileShare = () => {
           <FileDropZone onFilesAdded={handleFileUpload} />
           
           <div className="grid gap-6">
-            <ConnectionCode code={connectionCode} />
+            <ConnectionCode code={connectionCode} onRefresh={refreshConnectionCode} />
           </div>
           
           {/* Connection Pool - Replaces the old connection status card */}
