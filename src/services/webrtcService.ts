@@ -471,16 +471,16 @@ export class WebRTCService {
     }
   }
 
-  sendFile(file: File) {
+  sendFile(file: File): string {
     if (!this.dataChannel || this.dataChannel.readyState !== 'open') {
       console.error('Data channel not ready for file transfer');
-      return;
+      return '';
     }
 
     const fileId = `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     // Increased chunk size for better performance with large files
-    // 256KB chunks - optimal balance between speed and reliability
-    const chunkSize = 262144; 
+    // 1MB chunks - optimal balance between speed and reliability for large files
+    const chunkSize = 1048576;
     const totalChunks = Math.ceil(file.size / chunkSize);
 
     console.log(`Starting file transfer: ${file.name} (${file.size} bytes, ${totalChunks} chunks)`);
@@ -504,6 +504,8 @@ export class WebRTCService {
     setTimeout(() => {
       this.sendFileChunks(file, fileId, chunkSize, totalChunks);
     }, 100);
+
+    return fileId; // Return the generated fileId for mapping
   }
 
   private sendFileChunks(file: File, fileId: string, chunkSize: number, totalChunks: number) {
@@ -553,15 +555,15 @@ export class WebRTCService {
             console.log(`Sent chunk ${chunkIndex + 1}/${totalChunks} for ${file.name} (${((sentBytes / file.size) * 100).toFixed(1)}%)`);
             
             // More accurate progress calculation based on bytes sent
-            const progress = Math.min(99, (sentBytes / file.size) * 100); // Cap at 99% until completion
+            const progress = Math.min(95, (sentBytes / file.size) * 100); // Cap at 95% until completion signal
             if (this.onProgressUpdate) {
               this.onProgressUpdate(progress, fileId);
             }
 
             chunkIndex++;
             
-            // Adaptive delay based on file size - faster for large files
-            const delay = file.size > 100 * 1024 * 1024 ? 10 : 25; // 10ms for files >100MB, 25ms otherwise
+            // Adaptive delay based on file size - faster for large files with 1MB chunks
+            const delay = file.size > 50 * 1024 * 1024 ? 5 : 15; // 5ms for files >50MB, 15ms otherwise
             setTimeout(sendNextChunk, delay);
           } catch (error) {
             console.error('Error sending chunk:', error);

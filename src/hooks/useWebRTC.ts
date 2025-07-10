@@ -145,19 +145,21 @@ export const useWebRTC = () => {
     });
   }, []);
 
-  const sendFile = useCallback((file: File) => {
+  const sendFile = useCallback((file: File): string => {
     if (webrtcService.current && isDataChannelOpen) {
-      webrtcService.current.sendFile(file);
+      const webrtcFileId = webrtcService.current.sendFile(file);
       toast({
         title: "📤 Sending File",
         description: `Starting transfer of ${file.name}`,
       });
+      return webrtcFileId;
     } else {
       toast({
         title: "❌ Cannot Send File",
         description: "Data channel not ready",
         variant: "destructive"
       });
+      return '';
     }
   }, [isDataChannelOpen]);
 

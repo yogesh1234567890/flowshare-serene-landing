@@ -18,10 +18,12 @@ interface FileData {
   eta: string;
   status: 'uploading' | 'complete' | 'error';
   file: File;
+  webrtcFileId?: string; // Track WebRTC file ID for progress updates
 }
 
 const FileShare = () => {
   const [files, setFiles] = useState<FileData[]>([]);
+  const [fileIdMapping, setFileIdMapping] = useState<Map<string, string>>(new Map()); // WebRTC fileId -> UI fileId
   const [connectionCode, setConnectionCode] = useState(() => {
     const savedCode = localStorage.getItem('connectionCode');
     if (savedCode) return savedCode;
@@ -51,7 +53,8 @@ const FileShare = () => {
     sendFile, 
     peerConnected, 
     receiverConnected,
-    isWebSocketConnected
+    isWebSocketConnected,
+    fileTransferProgress
   } = useWebRTC();
 
   useEffect(() => {
@@ -59,9 +62,30 @@ const FileShare = () => {
     initializeAsSender(connectionCode);
   }, [connectionCode, initializeAsSender]);
 
+  // Sync real transfer progress from WebRTC service
   useEffect(() => {
-    setIsConnected(connectionState === 'connected');
-  }, [connectionState, isDataChannelOpen]);
+    fileTransferProgress.forEach((progress, webrtcFileId) => {
+      const uiFileId = fileIdMapping.get(webrtcFileId);
+      if (uiFileId) {
+        setFiles(prev => prev.map(file => {
+          if (file.id === uiFileId) {
+            const speed = progress < 100 ? `${(Math.random() * 8 + 2).toFixed(1)} MB/s` : '0 MB/s';
+            const eta = progress < 100 ? `${Math.round((100 - progress) / 8)}s` : 'Complete';
+            const status = progress === 100 ? 'complete' : 'uploading';
+            
+            return {
+              ...file,
+              progress: Math.round(progress),
+              speed,
+              eta: status === 'complete' ? 'Sent' : eta,
+              status: status as 'uploading' | 'complete' | 'error'
+            };
+          }
+          return file;
+        }));
+      }
+    });
+  }, [fileTransferProgress, fileIdMapping]);
 
   const handleFileUpload = (uploadedFiles: File[]) => {
     const newFiles: FileData[] = uploadedFiles.map((file, index) => ({
@@ -95,21 +119,23 @@ const FileShare = () => {
 
     console.log('Starting file transfer for', files.length, 'files');
     
-    // Send all files
+    // Send all files and create ID mapping
     files.forEach((fileData, index) => {
       setTimeout(() => {
         console.log('Sending file:', fileData.name);
-        sendFile(fileData.file);
+        const webrtcFileId = sendFile(fileData.file);
+        
+        if (webrtcFileId) {
+          // Map WebRTC file ID to UI file ID
+          setFileIdMapping(prev => new Map(prev.set(webrtcFileId, fileData.id)));
+        }
         
         // Update file status to show it's being sent
         setFiles(prev => prev.map(f => 
           f.id === fileData.id 
-            ? { ...f, status: 'uploading' as const, progress: 0, eta: 'Sending...' }
+            ? { ...f, status: 'uploading' as const, progress: 0, eta: 'Starting...' }
             : f
         ));
-        
-        // Simulate sending progress
-        simulateFileTransfer(fileData.id);
       }, index * 100);
     });
 
@@ -117,33 +143,6 @@ const FileShare = () => {
       title: "📤 Sending Files",
       description: `Transferring ${files.length} file(s) via secure connection`,
     });
-  };
-
-  const simulateFileTransfer = (fileId: string) => {
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += Math.random() * 15 + 5;
-      
-      if (progress >= 100) {
-        progress = 100;
-        clearInterval(interval);
-        setFiles(prev => prev.map(file => 
-          file.id === fileId 
-            ? { ...file, progress: 100, speed: '0 MB/s', eta: 'Sent', status: 'complete' }
-            : file
-        ));
-        return;
-      }
-
-      const speed = (Math.random() * 3 + 1).toFixed(1);
-      const eta = Math.round((100 - progress) / 10);
-      
-      setFiles(prev => prev.map(file => 
-        file.id === fileId 
-          ? { ...file, progress: Math.min(progress, 99), speed: `${speed} MB/s`, eta: `${eta}s` }
-          : file
-      ));
-    }, 200);
   };
 
   const removeFile = (fileId: string) => {
