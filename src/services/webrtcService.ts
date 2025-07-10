@@ -508,7 +508,7 @@ export class WebRTCService {
     }
 
     const fileId = Math.floor(Math.random() * 1000000000).toString();
-    const chunkSize = 1048576; // 1MB chunks for faster transfer
+    const chunkSize = 128 * 1024; // 1MB chunks for faster transfer
     const totalChunks = Math.ceil(file.size / chunkSize);
 
     console.log(`Starting file transfer: ${file.name} (${file.size} bytes, ${totalChunks} chunks)`);
@@ -526,15 +526,12 @@ export class WebRTCService {
 
     let chunkIndex = 0;
     let sentBytes = 0;
-    
     const readChunk = () => {
       if (chunkIndex >= totalChunks) {
         this.dataChannel!.send(JSON.stringify({ type: 'file-complete', data: { fileId } }));
-        // Final progress update to 100%
         if (this.onProgressUpdate) {
           this.onProgressUpdate(100, fileId);
         }
-        console.log('File transfer completed:', file.name);
         return;
       }
 
@@ -563,12 +560,8 @@ export class WebRTCService {
         if (this.onProgressUpdate) {
           this.onProgressUpdate(progress, fileId);
         }
-
-        console.log(`Sent chunk ${chunkIndex}/${totalChunks} for ${file.name} (${progress.toFixed(1)}%)`);
-
-        // Adaptive flow control with faster delays for large files
-        if (this.dataChannel!.bufferedAmount < 2_000_000) { // Increased buffer threshold
-          const delay = file.size > 50 * 1024 * 1024 ? 2 : 5; // 2ms for files >50MB, 5ms otherwise
+        if (this.dataChannel!.bufferedAmount < 2_000_000) { 
+          const delay = file.size > 50 * 1024 * 1024 ? 2 : 5; 
           setTimeout(readChunk, delay);
         } else {
           this.dataChannel!.onbufferedamountlow = () => {
