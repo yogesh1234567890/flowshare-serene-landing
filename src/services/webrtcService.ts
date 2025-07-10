@@ -318,9 +318,7 @@ export class WebRTCService {
     if (this.pc) {
       this.dataChannel = this.pc.createDataChannel('fileTransfer', {
         ordered: true,
-        maxRetransmits: 5,
-        // Larger buffer for better performance with large files
-        maxPacketLifeTime: 30000
+        maxRetransmits: 5
       });
       this.setupDataChannel(this.dataChannel);
     }
