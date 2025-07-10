@@ -179,8 +179,9 @@ export class WebRTCService {
   private handleFileChunk(chunk: { fileId: string; chunkIndex: number; totalChunks: number; data: number[] }) {
     const fileId = chunk.fileId;
     const chunks = this.receivedChunks.get(fileId);
+    const fileInfo = this.fileTransfers.get(fileId);
     
-    if (!chunks) {
+    if (!chunks || !fileInfo) {
       console.error('Received chunk for unknown file:', fileId);
       return;
     }
@@ -189,11 +190,20 @@ export class WebRTCService {
     const arrayBuffer = new Uint8Array(chunk.data).buffer;
     chunks[chunk.chunkIndex] = arrayBuffer;
 
-    // Calculate progress
+    // Calculate progress based on received bytes for accuracy
     const receivedChunks = chunks.filter(c => c !== undefined).length;
-    const progress = Math.max(1, (receivedChunks / chunk.totalChunks) * 100);
+    let receivedBytes = 0;
     
-    console.log(`File ${fileId} progress: ${progress.toFixed(1)}% (${receivedChunks}/${chunk.totalChunks})`);
+    // Calculate actual bytes received
+    for (let i = 0; i < chunks.length; i++) {
+      if (chunks[i]) {
+        receivedBytes += chunks[i].byteLength;
+      }
+    }
+    
+    const progress = Math.min(99, (receivedBytes / fileInfo.size) * 100); // Cap at 99% until file is complete
+    
+    console.log(`File ${fileId} progress: ${progress.toFixed(1)}% (${receivedChunks}/${chunk.totalChunks} chunks, ${(receivedBytes / 1024 / 1024).toFixed(1)}MB/${(fileInfo.size / 1024 / 1024).toFixed(1)}MB)`);
     
     if (this.onProgressUpdate) {
       this.onProgressUpdate(progress, fileId);
@@ -218,20 +228,41 @@ export class WebRTCService {
       return;
     }
 
-    // Combine all chunks
+    // Verify all chunks are present
+    const missingChunks = chunks.findIndex(chunk => chunk === undefined);
+    if (missingChunks !== -1) {
+      console.error(`Missing chunk at index ${missingChunks}, cannot assemble file`);
+      return;
+    }
+
+    console.log('Assembling file:', fileInfo.name, 'with', chunks.length, 'chunks');
+
+    // Combine all chunks efficiently for large files
     const totalSize = chunks.reduce((size, chunk) => size + chunk.byteLength, 0);
+    
+    // Verify expected size
+    if (totalSize !== fileInfo.size) {
+      console.warn(`Size mismatch: expected ${fileInfo.size}, got ${totalSize}`);
+    }
+
     const combinedBuffer = new ArrayBuffer(totalSize);
     const combinedView = new Uint8Array(combinedBuffer);
     
     let offset = 0;
-    for (const chunk of chunks) {
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
       if (chunk) {
         combinedView.set(new Uint8Array(chunk), offset);
         offset += chunk.byteLength;
       }
     }
 
-    console.log('File assembled successfully:', fileInfo.name);
+    console.log('File assembled successfully:', fileInfo.name, `(${(totalSize / 1024 / 1024).toFixed(1)}MB)`);
+    
+    // Final progress update to 100%
+    if (this.onProgressUpdate) {
+      this.onProgressUpdate(100, fileId);
+    }
     
     if (this.onFileReceived) {
       this.onFileReceived({
@@ -283,11 +314,13 @@ export class WebRTCService {
     this.onWebSocketError = callbacks.onWebSocketError;
     this.onReceiverJoined = callbacks.onReceiverJoined;
 
-    // Create data channel for sender with enhanced configuration
+    // Create data channel for sender with enhanced configuration for large files
     if (this.pc) {
       this.dataChannel = this.pc.createDataChannel('fileTransfer', {
         ordered: true,
-        maxRetransmits: 3
+        maxRetransmits: 5,
+        // Larger buffer for better performance with large files
+        maxPacketLifeTime: 30000
       });
       this.setupDataChannel(this.dataChannel);
     }
@@ -447,7 +480,9 @@ export class WebRTCService {
     }
 
     const fileId = `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const chunkSize = 16384; // 16KB chunks for better reliability
+    // Increased chunk size for better performance with large files
+    // 256KB chunks - optimal balance between speed and reliability
+    const chunkSize = 262144; 
     const totalChunks = Math.ceil(file.size / chunkSize);
 
     console.log(`Starting file transfer: ${file.name} (${file.size} bytes, ${totalChunks} chunks)`);
@@ -475,15 +510,23 @@ export class WebRTCService {
 
   private sendFileChunks(file: File, fileId: string, chunkSize: number, totalChunks: number) {
     let chunkIndex = 0;
+    let sentBytes = 0;
+    const startTime = Date.now();
     
     const sendNextChunk = () => {
       if (chunkIndex >= totalChunks) {
-        // File transfer complete
+        // File transfer complete - only update progress to 100% when truly done
         console.log('All chunks sent, sending completion signal');
         this.dataChannel!.send(JSON.stringify({
           type: 'file-complete',
           data: { fileId }
         }));
+        
+        // Final progress update to 100%
+        if (this.onProgressUpdate) {
+          this.onProgressUpdate(100, fileId);
+        }
+        
         console.log('File transfer completed:', file.name);
         return;
       }
@@ -494,7 +537,7 @@ export class WebRTCService {
 
       const reader = new FileReader();
       reader.onload = () => {
-        if (this.dataChannel && reader.result) {
+        if (this.dataChannel && reader.result && this.dataChannel.readyState === 'open') {
           const chunkData = {
             type: 'file-chunk',
             data: {
@@ -505,24 +548,38 @@ export class WebRTCService {
             }
           };
 
-          console.log(`Sending chunk ${chunkIndex + 1}/${totalChunks} for ${file.name}`);
-          this.dataChannel.send(JSON.stringify(chunkData));
-          
-          // Update progress
-          const progress = ((chunkIndex + 1) / totalChunks) * 100;
-          if (this.onProgressUpdate) {
-            this.onProgressUpdate(progress, fileId);
-          }
+          try {
+            this.dataChannel.send(JSON.stringify(chunkData));
+            sentBytes += chunk.size;
+            
+            console.log(`Sent chunk ${chunkIndex + 1}/${totalChunks} for ${file.name} (${((sentBytes / file.size) * 100).toFixed(1)}%)`);
+            
+            // More accurate progress calculation based on bytes sent
+            const progress = Math.min(99, (sentBytes / file.size) * 100); // Cap at 99% until completion
+            if (this.onProgressUpdate) {
+              this.onProgressUpdate(progress, fileId);
+            }
 
-          chunkIndex++;
-          
-          // Use setTimeout to prevent blocking the main thread
-          setTimeout(sendNextChunk, 50); // Slightly longer delay for stability
+            chunkIndex++;
+            
+            // Adaptive delay based on file size - faster for large files
+            const delay = file.size > 100 * 1024 * 1024 ? 10 : 25; // 10ms for files >100MB, 25ms otherwise
+            setTimeout(sendNextChunk, delay);
+          } catch (error) {
+            console.error('Error sending chunk:', error);
+            // Retry after a longer delay
+            setTimeout(sendNextChunk, 100);
+          }
+        } else {
+          console.error('Data channel not ready, retrying...');
+          setTimeout(sendNextChunk, 100);
         }
       };
 
-      reader.onerror = () => {
-        console.error('Error reading file chunk');
+      reader.onerror = (error) => {
+        console.error('Error reading file chunk:', error);
+        // Retry the same chunk
+        setTimeout(sendNextChunk, 100);
       };
 
       reader.readAsArrayBuffer(chunk);
