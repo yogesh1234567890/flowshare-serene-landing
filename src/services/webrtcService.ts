@@ -508,7 +508,7 @@ export class WebRTCService {
     }
 
     const fileId = Math.floor(Math.random() * 1000000000).toString();
-    const chunkSize = 128 * 1024; // 128KB
+    const chunkSize = 1048576; // 1MB chunks for faster transfer
     const totalChunks = Math.ceil(file.size / chunkSize);
 
     console.log(`Starting file transfer: ${file.name} (${file.size} bytes, ${totalChunks} chunks)`);
@@ -525,9 +525,16 @@ export class WebRTCService {
     this.dataChannel.send(JSON.stringify({ type: 'file-info', data: fileInfo }));
 
     let chunkIndex = 0;
+    let sentBytes = 0;
+    
     const readChunk = () => {
       if (chunkIndex >= totalChunks) {
         this.dataChannel!.send(JSON.stringify({ type: 'file-complete', data: { fileId } }));
+        // Final progress update to 100%
+        if (this.onProgressUpdate) {
+          this.onProgressUpdate(100, fileId);
+        }
+        console.log('File transfer completed:', file.name);
         return;
       }
 
@@ -548,16 +555,27 @@ export class WebRTCService {
         payload.set(new Uint8Array(buffer), 12);
 
         this.dataChannel!.send(payload.buffer);
+        sentBytes += buffer.byteLength;
         chunkIndex++;
 
-        if (this.dataChannel!.bufferedAmount < 1_000_000) {
-          readChunk();
+        // Update sender progress
+        const progress = Math.min(95, (sentBytes / file.size) * 100); // Cap at 95% until completion
+        if (this.onProgressUpdate) {
+          this.onProgressUpdate(progress, fileId);
+        }
+
+        console.log(`Sent chunk ${chunkIndex}/${totalChunks} for ${file.name} (${progress.toFixed(1)}%)`);
+
+        // Adaptive flow control with faster delays for large files
+        if (this.dataChannel!.bufferedAmount < 2_000_000) { // Increased buffer threshold
+          const delay = file.size > 50 * 1024 * 1024 ? 2 : 5; // 2ms for files >50MB, 5ms otherwise
+          setTimeout(readChunk, delay);
         } else {
           this.dataChannel!.onbufferedamountlow = () => {
             this.dataChannel!.onbufferedamountlow = null;
-            readChunk();
+            setTimeout(readChunk, 2);
           };
-          this.dataChannel!.bufferedAmountLowThreshold = 256 * 1024;
+          this.dataChannel!.bufferedAmountLowThreshold = 512 * 1024; // 512KB threshold
         }
       };
 
@@ -565,6 +583,7 @@ export class WebRTCService {
     };
 
     readChunk();
+    return fileId;
   }
 
 
