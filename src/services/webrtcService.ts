@@ -45,6 +45,31 @@ export class WebRTCService {
     this.setupPeerConnection();
   }
 
+  private handleBinaryChunk(data: ArrayBuffer) {
+  const headerView = new DataView(data, 0, 12);
+  const fileId = headerView.getUint32(0).toString();
+  const chunkIndex = headerView.getUint16(4);
+  const totalChunks = headerView.getUint16(6);
+  const payloadSize = headerView.getUint32(8);
+
+  const chunkData = data.slice(12, 12 + payloadSize);
+  const chunks = this.receivedChunks.get(fileId);
+
+  if (!chunks) {
+    console.error('Unknown fileId:', fileId);
+    return;
+  }
+
+  chunks[chunkIndex] = chunkData;
+
+  const received = chunks.filter(c => c).length;
+  const progress = (received / totalChunks) * 100;
+  if (this.onProgressUpdate) this.onProgressUpdate(progress, fileId);
+
+  if (received === totalChunks) this.assembleFile(fileId);
+}
+
+
   private setupPeerConnection() {
     // Enhanced ICE server configuration with public STUN/TURN servers
     const configuration: RTCConfiguration = {
@@ -139,13 +164,18 @@ export class WebRTCService {
     channel.onerror = (error) => {
       console.error('Data channel error:', error);
     };
+    channel.binaryType = 'arraybuffer'; // 👈 Set binary mode
 
     channel.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        this.handleDataChannelMessage(message);
-      } catch (error) {
-        console.error('Error parsing data channel message:', error);
+      if (typeof event.data === 'string') {
+        try {
+          const message = JSON.parse(event.data);
+          this.handleDataChannelMessage(message);
+        } catch (error) {
+          console.error('Error parsing JSON message:', error);
+        }
+      } else {
+        this.handleBinaryChunk(event.data); // 👈 Handle binary chunks
       }
     };
   }
@@ -477,10 +507,8 @@ export class WebRTCService {
       return '';
     }
 
-    const fileId = `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    // Increased chunk size for better performance with large files
-    // 1MB chunks - optimal balance between speed and reliability for large files
-    const chunkSize = 1048576;
+    const fileId = Math.floor(Math.random() * 1000000000).toString();
+    const chunkSize = 128 * 1024; // 128KB
     const totalChunks = Math.ceil(file.size / chunkSize);
 
     console.log(`Starting file transfer: ${file.name} (${file.size} bytes, ${totalChunks} chunks)`);
@@ -494,19 +522,51 @@ export class WebRTCService {
       chunks: totalChunks
     };
 
-    console.log('Sending file info:', fileInfo);
-    this.dataChannel.send(JSON.stringify({
-      type: 'file-info',
-      data: fileInfo
-    }));
+    this.dataChannel.send(JSON.stringify({ type: 'file-info', data: fileInfo }));
 
-    // Small delay to ensure file info is processed before chunks
-    setTimeout(() => {
-      this.sendFileChunks(file, fileId, chunkSize, totalChunks);
-    }, 100);
+    let chunkIndex = 0;
+    const readChunk = () => {
+      if (chunkIndex >= totalChunks) {
+        this.dataChannel!.send(JSON.stringify({ type: 'file-complete', data: { fileId } }));
+        return;
+      }
 
-    return fileId; // Return the generated fileId for mapping
+      const start = chunkIndex * chunkSize;
+      const end = Math.min(start + chunkSize, file.size);
+      const slice = file.slice(start, end);
+      const reader = new FileReader();
+
+      reader.onload = () => {
+        const buffer = reader.result as ArrayBuffer;
+        const payload = new Uint8Array(12 + buffer.byteLength);
+        const header = new DataView(payload.buffer);
+        header.setUint32(0, parseInt(fileId));      // fileId hash
+        header.setUint16(4, chunkIndex);            // chunk index
+        header.setUint16(6, totalChunks);           // total chunks
+        header.setUint32(8, buffer.byteLength);     // payload size
+
+        payload.set(new Uint8Array(buffer), 12);
+
+        this.dataChannel!.send(payload.buffer);
+        chunkIndex++;
+
+        if (this.dataChannel!.bufferedAmount < 1_000_000) {
+          readChunk();
+        } else {
+          this.dataChannel!.onbufferedamountlow = () => {
+            this.dataChannel!.onbufferedamountlow = null;
+            readChunk();
+          };
+          this.dataChannel!.bufferedAmountLowThreshold = 256 * 1024;
+        }
+      };
+
+      reader.readAsArrayBuffer(slice);
+    };
+
+    readChunk();
   }
+
 
   private sendFileChunks(file: File, fileId: string, chunkSize: number, totalChunks: number) {
     let chunkIndex = 0;
