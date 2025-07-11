@@ -102,12 +102,13 @@ export const useFileReceive = () => {
               });
             }
           } else {
-            // Update existing file only if there's a significant change (>= 5% or status change)
+            // Update existing file only if there's a significant change (>= 2% or status change)
             const currentFile = newFiles[existingIndex];
             const shouldUpdate = 
-              Math.abs(currentFile.progress - roundedProgress) >= 5 || 
+              Math.abs(currentFile.progress - roundedProgress) >= 2 || 
               (progress >= 100 && currentFile.status !== 'complete') ||
-              (fileInfo?.name && currentFile.name !== fileInfo.name);
+              (fileInfo?.name && currentFile.name !== fileInfo.name) ||
+              (fileInfo?.size && currentFile.size !== fileInfo.size);
             
             if (shouldUpdate) {
               newFiles[existingIndex] = {
@@ -115,8 +116,8 @@ export const useFileReceive = () => {
                 name: fileInfo?.name || currentFile.name,
                 size: fileInfo?.size || currentFile.size,
                 progress: roundedProgress,
-                speed: calculateSpeed(progress),
-                eta: calculateETA(progress),
+                speed: progress < 100 ? calculateSpeed(progress) : '0 MB/s',
+                eta: progress >= 100 ? 'Complete' : calculateETA(progress),
                 status: progress >= 100 ? 'complete' : progress > 0 ? 'downloading' : 'connecting'
               };
               hasChanges = true;

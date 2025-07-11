@@ -8,11 +8,11 @@ interface TransferHeartbeatProps {
 
 const TransferHeartbeat = ({ isActive, children }: TransferHeartbeatProps) => {
   return (
-    <div className={`transition-all duration-300 ${
-      isActive ? 'animate-pulse' : ''
+    <div className={`transition-all duration-500 ${
+      isActive ? 'shadow-lg scale-[1.01]' : ''
     }`}>
       <div className={`relative ${
-        isActive ? 'before:absolute before:inset-0 before:bg-blue-100 before:rounded-lg before:animate-ping before:opacity-20' : ''
+        isActive ? 'border-l-4 border-blue-500' : ''
       }`}>
         {children}
       </div>

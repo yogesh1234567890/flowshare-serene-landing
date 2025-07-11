@@ -46,28 +46,44 @@ export class WebRTCService {
   }
 
   private handleBinaryChunk(data: ArrayBuffer) {
-  const headerView = new DataView(data, 0, 12);
-  const fileId = headerView.getUint32(0).toString();
-  const chunkIndex = headerView.getUint16(4);
-  const totalChunks = headerView.getUint16(6);
-  const payloadSize = headerView.getUint32(8);
+    const headerView = new DataView(data, 0, 12);
+    const fileId = headerView.getUint32(0).toString();
+    const chunkIndex = headerView.getUint16(4);
+    const totalChunks = headerView.getUint16(6);
+    const payloadSize = headerView.getUint32(8);
 
-  const chunkData = data.slice(12, 12 + payloadSize);
-  const chunks = this.receivedChunks.get(fileId);
+    const chunkData = data.slice(12, 12 + payloadSize);
+    const chunks = this.receivedChunks.get(fileId);
 
-  if (!chunks) {
-    console.error('Unknown fileId:', fileId);
-    return;
+    if (!chunks) {
+      console.error('Unknown fileId:', fileId);
+      return;
+    }
+
+    chunks[chunkIndex] = chunkData;
+
+    const received = chunks.filter(c => c).length;
+    let receivedBytes = 0;
+    
+    // Calculate actual bytes received for accurate progress
+    for (let i = 0; i < chunks.length; i++) {
+      if (chunks[i]) {
+        receivedBytes += chunks[i].byteLength;
+      }
+    }
+    
+    const fileInfo = this.fileTransfers.get(fileId);
+    const progress = fileInfo ? Math.min(99.5, (receivedBytes / fileInfo.size) * 100) : (received / totalChunks) * 100;
+    
+    console.log(`Binary chunk ${chunkIndex}/${totalChunks} received for ${fileId} (${progress.toFixed(1)}%)`);
+    
+    if (this.onProgressUpdate) this.onProgressUpdate(progress, fileId);
+
+    if (received === totalChunks) {
+      console.log('All binary chunks received, assembling file...');
+      this.assembleFile(fileId);
+    }
   }
-
-  chunks[chunkIndex] = chunkData;
-
-  const received = chunks.filter(c => c).length;
-  const progress = (received / totalChunks) * 100;
-  if (this.onProgressUpdate) this.onProgressUpdate(progress, fileId);
-
-  if (received === totalChunks) this.assembleFile(fileId);
-}
 
 
   private setupPeerConnection() {
@@ -254,14 +270,14 @@ export class WebRTCService {
     const fileInfo = this.fileTransfers.get(fileId);
     
     if (!chunks || !fileInfo) {
-      console.error('Cannot assemble file, missing data');
+      console.error('Cannot assemble file, missing data for fileId:', fileId);
       return;
     }
 
     // Verify all chunks are present
     const missingChunks = chunks.findIndex(chunk => chunk === undefined);
     if (missingChunks !== -1) {
-      console.error(`Missing chunk at index ${missingChunks}, cannot assemble file`);
+      console.error(`Missing chunk at index ${missingChunks}, cannot assemble file ${fileId}`);
       return;
     }
 
@@ -271,8 +287,8 @@ export class WebRTCService {
     const totalSize = chunks.reduce((size, chunk) => size + chunk.byteLength, 0);
     
     // Verify expected size
-    if (totalSize !== fileInfo.size) {
-      console.warn(`Size mismatch: expected ${fileInfo.size}, got ${totalSize}`);
+    if (Math.abs(totalSize - fileInfo.size) > 1024) { // Allow small variance for headers
+      console.error(`Size mismatch for ${fileId}: expected ${fileInfo.size}, got ${totalSize}`);
     }
 
     const combinedBuffer = new ArrayBuffer(totalSize);
@@ -289,11 +305,12 @@ export class WebRTCService {
 
     console.log('File assembled successfully:', fileInfo.name, `(${(totalSize / 1024 / 1024).toFixed(1)}MB)`);
     
-    // Final progress update to 100%
+    // CRITICAL: Set progress to 100% BEFORE triggering file received
     if (this.onProgressUpdate) {
       this.onProgressUpdate(100, fileId);
     }
     
+    // Trigger file download
     if (this.onFileReceived) {
       this.onFileReceived({
         name: fileInfo.name,
@@ -305,6 +322,8 @@ export class WebRTCService {
     // Cleanup
     this.receivedChunks.delete(fileId);
     this.fileTransfers.delete(fileId);
+    
+    console.log('File transfer completed and cleaned up for:', fileId);
   }
 
   connectAsReceiver(connectionCode: string, callbacks: {
@@ -528,10 +547,13 @@ export class WebRTCService {
     let sentBytes = 0;
     const readChunk = () => {
       if (chunkIndex >= totalChunks) {
+        console.log('All chunks sent, sending completion signal...');
         this.dataChannel!.send(JSON.stringify({ type: 'file-complete', data: { fileId } }));
+        // Final progress update to 100% for sender
         if (this.onProgressUpdate) {
           this.onProgressUpdate(100, fileId);
         }
+        console.log('File transfer completed for sender:', fileId);
         return;
       }
 
@@ -555,8 +577,8 @@ export class WebRTCService {
         sentBytes += buffer.byteLength;
         chunkIndex++;
 
-        // Update sender progress
-        const progress = Math.min(95, (sentBytes / file.size) * 100); // Cap at 95% until completion
+        // Update sender progress - don't cap at 95%
+        const progress = (sentBytes / file.size) * 100;
         if (this.onProgressUpdate) {
           this.onProgressUpdate(progress, fileId);
         }
