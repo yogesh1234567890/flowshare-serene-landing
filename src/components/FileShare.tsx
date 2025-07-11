@@ -16,7 +16,7 @@ interface FileData {
   progress: number;
   speed: string;
   eta: string;
-  status: 'uploading' | 'complete' | 'error';
+  status: 'ready' | 'uploading' | 'sent' | 'error';
   file: File;
   webrtcFileId?: string; // Track WebRTC file ID for progress updates
 }
@@ -71,14 +71,14 @@ const FileShare = () => {
           if (file.id === uiFileId) {
             const speed = progress < 100 ? `${(Math.random() * 8 + 2).toFixed(1)} MB/s` : '0 MB/s';
             const eta = progress < 100 ? `${Math.round((100 - progress) / 8)}s` : 'Complete';
-            const status = progress === 100 ? 'complete' : 'uploading';
+            const status = progress === 100 ? 'sent' : 'uploading';
             
             return {
               ...file,
               progress: Math.round(progress),
               speed,
-              eta: status === 'complete' ? 'Sent' : eta,
-              status: status as 'uploading' | 'complete' | 'error'
+              eta: status === 'sent' ? 'Sent' : eta,
+              status: status as 'ready' | 'uploading' | 'sent' | 'error'
             };
           }
           return file;
@@ -92,10 +92,10 @@ const FileShare = () => {
       id: `file-${Date.now()}-${index}`,
       name: file.name,
       size: file.size,
-      progress: 100, // Files are immediately ready to send
+      progress: 0, // Start at 0% until actually sent
       speed: '0 MB/s',
       eta: 'Ready to send',
-      status: 'complete' as const,
+      status: 'ready' as const, // Ready to send, not sent yet
       file: file
     }));
 
@@ -201,7 +201,7 @@ const FileShare = () => {
                 <h3 className="text-lg font-semibold text-gray-900">
                   Files Ready ({files.length})
                 </h3>
-                {receiverConnected && isDataChannelOpen && files.some(f => f.status === 'complete') && (
+                {receiverConnected && isDataChannelOpen && files.some(f => f.status === 'ready') && (
                   <Button 
                     onClick={handleSendFiles}
                     className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-2 animate-pulse shadow-lg"

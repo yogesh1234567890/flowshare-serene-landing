@@ -7,7 +7,7 @@ import { File, RotateCw, X, Send } from 'lucide-react';
 interface FileWithProgress {
   file: File;
   progress: number;
-  status: 'uploading' | 'encrypting' | 'complete' | 'error';
+  status: 'ready' | 'uploading' | 'encrypting' | 'sent' | 'error';
   id: string;
 }
 
@@ -21,9 +21,10 @@ const UploadProgress = ({ fileItem, onRemove }: UploadProgressProps) => {
 
   const getStatusColor = () => {
     switch (status) {
+      case 'ready': return 'text-gray-600';
       case 'uploading': return 'text-blue-600';
       case 'encrypting': return 'text-yellow-600';
-      case 'complete': return 'text-green-600';
+      case 'sent': return 'text-green-600';
       case 'error': return 'text-red-600';
       default: return 'text-gray-600';
     }
@@ -31,9 +32,10 @@ const UploadProgress = ({ fileItem, onRemove }: UploadProgressProps) => {
 
   const getStatusText = () => {
     switch (status) {
+      case 'ready': return 'Ready to send';
       case 'uploading': return 'Sending...';
       case 'encrypting': return 'Encrypting...';
-      case 'complete': return progress === 100 ? (status === 'complete' && progress === 100 ? 'Sent' : 'Ready to send') : 'Ready to send';
+      case 'sent': return 'Sent';
       case 'error': return 'Transfer failed';
       default: return 'Preparing...';
     }
@@ -71,7 +73,7 @@ const UploadProgress = ({ fileItem, onRemove }: UploadProgressProps) => {
           <span className={`text-xs font-medium ${getStatusColor()}`}>
             {getStatusText()}
           </span>
-          {onRemove && status === 'complete' && progress === 100 && getStatusText() === 'Ready to send' && (
+          {onRemove && status === 'ready' && (
             <Button
               variant="ghost"
               size="sm"
@@ -89,7 +91,7 @@ const UploadProgress = ({ fileItem, onRemove }: UploadProgressProps) => {
           <span>{Math.round(progress)}%</span>
           <span>
             {status === 'encrypting' ? '🔒 Encrypting' : 
-             status === 'complete' ? (progress === 100 && getStatusText() === 'Sent' ? '✅ Sent' : '📁 Ready') : 
+             status === 'sent' ? '✅ Sent' : 
              status === 'uploading' ? '📤 Sending' : '📁 Ready'}
           </span>
         </div>
@@ -97,7 +99,7 @@ const UploadProgress = ({ fileItem, onRemove }: UploadProgressProps) => {
           value={progress} 
           className={`h-2 ${
             status === 'encrypting' ? '[&>div]:bg-yellow-500' :
-            status === 'complete' ? '[&>div]:bg-green-500' : 
+            status === 'sent' ? '[&>div]:bg-green-500' : 
             status === 'uploading' ? '[&>div]:bg-blue-500' : '[&>div]:bg-gray-400'
           }`}
         />
