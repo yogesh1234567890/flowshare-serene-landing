@@ -22,6 +22,7 @@ export const useFileReceive = () => {
     isDataChannelOpen, 
     isWebSocketConnected, 
     fileTransferProgress, 
+    fileInfoMap,
     initializeAsReceiver 
   } = useWebRTC();
 
@@ -39,7 +40,7 @@ export const useFileReceive = () => {
   const handleConnect = useCallback((connectionCode: string) => {
     console.log('Receiver connecting to room:', connectionCode);
     
-    // Initialize WebRTC connection as receiver
+    // Initialize WebRTC connection as receiver with enhanced file info handling
     initializeAsReceiver(connectionCode);
     
     toast({
@@ -65,70 +66,86 @@ export const useFileReceive = () => {
     }
   }, [connectionState, isDataChannelOpen]);
 
-  // Handle file transfer progress updates from WebRTC
+  // Handle file transfer progress updates from WebRTC with debounced updates
   useEffect(() => {
     if (fileTransferProgress.size > 0) {
-      fileTransferProgress.forEach((progress, fileId) => {
-        setDownloadFiles(prev => {
-          const existingFileIndex = prev.findIndex(f => f.id === fileId);
+      // Batch updates to prevent excessive re-renders
+      setDownloadFiles(prev => {
+        const newFiles = [...prev];
+        let hasChanges = false;
+        
+        fileTransferProgress.forEach((progress, fileId) => {
+          const existingIndex = newFiles.findIndex(f => f.id === fileId);
+          const fileInfo = fileInfoMap.get(fileId);
+          const roundedProgress = Math.round(progress);
           
-          if (existingFileIndex === -1) {
+          if (existingIndex === -1) {
             // Create new download file entry
             const newFile: DownloadFile = {
               id: fileId,
-              name: `File-${fileId.slice(-6)}`,
-              size: 0, // Will be updated when we get file info
-              progress: progress,
+              name: fileInfo?.name || `Receiving file...`,
+              size: fileInfo?.size || 0,
+              progress: roundedProgress,
               speed: calculateSpeed(progress),
               eta: calculateETA(progress),
-              status: progress >= 100 ? 'complete' : 'downloading'
+              status: progress >= 100 ? 'complete' : progress > 0 ? 'downloading' : 'connecting'
             };
             
-            // Show toast for new file transfer
-            if (progress > 0) {
+            newFiles.push(newFile);
+            hasChanges = true;
+            
+            // Show toast for new file transfer (only once)
+            if (progress > 0 && progress < 100) {
               toast({
                 title: "📥 Receiving File",
-                description: `File transfer started`,
+                description: fileInfo?.name ? `Receiving ${fileInfo.name}` : "File transfer started",
               });
             }
-            
-            return [...prev, newFile];
           } else {
-            // Update existing file
-            const updatedFiles = [...prev];
-            const currentFile = updatedFiles[existingFileIndex];
+            // Update existing file only if there's a significant change (>= 5% or status change)
+            const currentFile = newFiles[existingIndex];
+            const shouldUpdate = 
+              Math.abs(currentFile.progress - roundedProgress) >= 5 || 
+              (progress >= 100 && currentFile.status !== 'complete') ||
+              (fileInfo?.name && currentFile.name !== fileInfo.name);
             
-            updatedFiles[existingFileIndex] = {
-              ...currentFile,
-              progress: progress,
-              speed: calculateSpeed(progress),
-              eta: calculateETA(progress),
-              status: progress >= 100 ? 'complete' : 'downloading'
-            };
-            
-            // Show completion toast
-            if (progress >= 100 && currentFile.progress < 100) {
-              toast({
-                title: "✅ File Received",
-                description: `${currentFile.name} downloaded successfully`,
-              });
+            if (shouldUpdate) {
+              newFiles[existingIndex] = {
+                ...currentFile,
+                name: fileInfo?.name || currentFile.name,
+                size: fileInfo?.size || currentFile.size,
+                progress: roundedProgress,
+                speed: calculateSpeed(progress),
+                eta: calculateETA(progress),
+                status: progress >= 100 ? 'complete' : progress > 0 ? 'downloading' : 'connecting'
+              };
+              hasChanges = true;
+              
+              // Show completion toast (only once)
+              if (progress >= 100 && currentFile.progress < 100) {
+                toast({
+                  title: "✅ File Received",
+                  description: `${fileInfo?.name || currentFile.name} downloaded successfully`,
+                });
+              }
             }
-            
-            return updatedFiles;
           }
         });
+        
+        return hasChanges ? newFiles : prev;
       });
     }
-  }, [fileTransferProgress]);
+  }, [fileTransferProgress, fileInfoMap]);
 
   const calculateSpeed = (progress: number): string => {
-    // More realistic speed calculation based on progress
+    // More stable speed calculation to reduce flicker
     if (progress === 0) return '0 MB/s';
     if (progress >= 100) return '0 MB/s';
     
-    const baseSpeed = 1.2 + Math.random() * 1.8; // 1.2-3.0 MB/s
-    const speedVariation = Math.sin(Date.now() / 1000) * 0.3; // Add variation
-    return `${Math.max(0.1, baseSpeed + speedVariation).toFixed(1)} MB/s`;
+    // Use a more stable base speed calculation
+    const baseSpeed = 2.5; // Fixed base speed
+    const variation = (Math.sin(Date.now() / 5000) * 0.5); // Slower variation
+    return `${Math.max(0.5, baseSpeed + variation).toFixed(1)} MB/s`;
   };
 
   const calculateETA = (progress: number): string => {

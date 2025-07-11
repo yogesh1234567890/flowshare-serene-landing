@@ -7,6 +7,7 @@ export const useWebRTC = () => {
   const [isDataChannelOpen, setIsDataChannelOpen] = useState(false);
   const [isWebSocketConnected, setIsWebSocketConnected] = useState(false);
   const [fileTransferProgress, setFileTransferProgress] = useState<Map<string, number>>(new Map());
+  const [fileInfoMap, setFileInfoMap] = useState<Map<string, { name: string; size: number }>>(new Map());
   const [peerConnected, setPeerConnected] = useState(false);
   const [receiverConnected, setReceiverConnected] = useState(false);
   const webrtcService = useRef<WebRTCService | null>(null);
@@ -124,6 +125,19 @@ export const useWebRTC = () => {
       onProgressUpdate: (progress, fileId) => {
         if (fileId) {
           setFileTransferProgress(prev => new Map(prev.set(fileId, progress)));
+          
+          // Try to get file info from the service if available (first time)
+          if (progress === 1 && webrtcService.current) {
+            // Access the file transfer info from the service
+            const fileTransfers = (webrtcService.current as any).fileTransfers;
+            if (fileTransfers && fileTransfers.has(fileId)) {
+              const fileInfo = fileTransfers.get(fileId);
+              setFileInfoMap(prev => new Map(prev.set(fileId, { 
+                name: fileInfo.name, 
+                size: fileInfo.size 
+              })));
+            }
+          }
         }
         console.log('File receive progress:', progress, fileId);
       },
@@ -184,6 +198,7 @@ export const useWebRTC = () => {
     isDataChannelOpen,
     isWebSocketConnected,
     fileTransferProgress,
+    fileInfoMap,
     peerConnected,
     receiverConnected,
     initializeAsSender,
