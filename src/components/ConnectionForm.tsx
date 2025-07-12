@@ -5,7 +5,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { QrCode, Wifi, WifiOff, Globe, Shield, Users } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import QRScanner from './QRScanner';
 import ConnectionPulse from './ConnectionPulse';
 import { soundEffects } from '@/utils/soundEffects';
 
@@ -18,7 +17,6 @@ interface ConnectionFormProps {
 
 const ConnectionForm = ({ onConnect, connectionStatus, connectionState, isWebSocketConnected }: ConnectionFormProps) => {
   const [connectionCode, setConnectionCode] = useState('');
-  const [showQRScanner, setShowQRScanner] = useState(false);
 
   const handleConnect = () => {
     if (!connectionCode.trim()) {
@@ -29,16 +27,6 @@ const ConnectionForm = ({ onConnect, connectionStatus, connectionState, isWebSoc
       return;
     }
     onConnect(connectionCode);
-  };
-
-  const handleQRScan = (result: string) => {
-    setConnectionCode(result);
-    setShowQRScanner(false);
-    soundEffects.playQRScanSound();
-    toast({
-      title: "📱 QR Code Scanned",
-      description: "Connection code captured",
-    });
   };
 
   const getConnectionStatusDisplay = () => {
@@ -126,24 +114,9 @@ const ConnectionForm = ({ onConnect, connectionStatus, connectionState, isWebSoc
               className="text-center font-mono text-xl tracking-widest h-14 text-foreground placeholder:text-muted-foreground border-2 focus:border-primary transition-all duration-200"
               maxLength={15}
             />
-            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowQRScanner(!showQRScanner)}
-                className="h-8 w-8 p-0 hover:bg-muted"
-              >
-                <QrCode className="w-4 h-4" />
-              </Button>
-            </div>
           </div>
 
-          {showQRScanner && (
-            <div className="border rounded-lg p-4 bg-gray-50 animate-fade-in">
-              <QRScanner onScan={handleQRScan} />
-            </div>
-          )}
-
+         
           <Button
             onClick={handleConnect}
             disabled={!connectionCode.trim() || connectionStatus === 'connecting'}
