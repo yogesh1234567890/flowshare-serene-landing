@@ -2,6 +2,7 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { RefreshCcw } from 'lucide-react';
 interface ConnectionCodeProps {
   code: string;
   onRefresh?: () => void;
@@ -18,7 +19,8 @@ const ConnectionCode = ({ code, onRefresh }: ConnectionCodeProps) => {
           className="absolute top-2 right-2 text-black hover:text-gray-500"
           title="Refresh Code"
         >
-          🔄 Refresh
+          <RefreshCcw />
+          Refresh
         </Button>
       )}
       <CardContent className="p-6 text-center">
