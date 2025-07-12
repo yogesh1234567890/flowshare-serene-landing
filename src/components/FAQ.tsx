@@ -25,10 +25,6 @@ const FAQ = () => {
     {
       question: "Can I share files with someone on a different operating system?",
       answer: "Yes! Our service works across all platforms - Windows, Mac, Linux, iOS, and Android. As long as both devices have internet access, sharing works seamlessly."
-    },
-    {
-      question: "How long are the sharing links active?",
-      answer: "Links remain active for 24 hours by default, but you can customize this. Once expired, the link becomes invalid for security. You can always generate a new one!"
     }
   ];
 
