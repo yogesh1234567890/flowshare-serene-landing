@@ -28,13 +28,13 @@ const FileShare = () => {
     const savedCode = localStorage.getItem('connectionCode');
     if (savedCode) return savedCode;
 
-    const newCode = `ROOM_${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+    const newCode = `${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
     localStorage.setItem('connectionCode', newCode);
     return newCode;
   });
 
   const refreshConnectionCode = () => {
-    const newCode = `ROOM_${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+    const newCode = `${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
     setConnectionCode(newCode);
     localStorage.setItem('connectionCode', newCode);
     initializeAsSender(newCode);

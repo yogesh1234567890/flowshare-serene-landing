@@ -13,15 +13,15 @@ const ConnectionCode = ({ code, onRefresh }: ConnectionCodeProps) => {
     <Card className="relative bg-gradient-to-r from-blue-500 to-teal-500 text-white">
       {onRefresh && (
         <Button
-          variant="ghost"
           size="sm"
           onClick={onRefresh}
-          className="absolute top-2 right-2 text-black hover:text-gray-500"
+          className="absolute top-2 right-2 flex items-center gap-2 bg-white text-blue-600 rounded-lg px-3 py-1.5 hover:scale-105 hover:bg-blue-50 transition-all"
           title="Refresh Code"
+          aria-label="Refresh Code"
         >
-          <RefreshCcw />
-          Refresh
+          <RefreshCcw className="w-4 h-4" />
         </Button>
+
       )}
       <CardContent className="p-6 text-center">
         <h3 className="text-sm font-medium mb-2 opacity-90">Connection Code</h3>
