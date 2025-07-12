@@ -31,8 +31,7 @@ const Footer = () => {
                  }
                }}>How it Works</a></li>
               <li><a href="#" className="hover:text-white transition-colors">Features</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Security</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">API</a></li>
+              <li><a href="/security" className="hover:text-white transition-colors">Security</a></li>
             </ul>
           </div>
           
