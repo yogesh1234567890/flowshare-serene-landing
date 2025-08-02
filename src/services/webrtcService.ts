@@ -85,7 +85,6 @@ export class WebRTCService {
   private pendingReceiverJoined: boolean = false;
   private receiverJoined: boolean = false; // Track if receiver has joined
   private webrtcInitiated: boolean = false; // Track if WebRTC connection process has started
-  private peerConnectionInitialized: boolean = false; // Track if PC is ready
 
   constructor(config: WebRTCConfig = {}) {
     this.config = {
@@ -96,29 +95,17 @@ export class WebRTCService {
       maxChunkRetries: config.maxChunkRetries || 3
     };
     
-    // Initialize peer connection asynchronously
-    this.initializePeerConnection();
-  }
-
-  // Initialize peer connection asynchronously
-  private async initializePeerConnection(): Promise<void> {
-    try {
-      await this.setupPeerConnection();
-      this.peerConnectionInitialized = true;
-    } catch (error) {
-      console.error('Failed to initialize peer connection:', error);
-      this.safeCallback('onConnectionStateChange', WebRTCConnectionState.Failed);
-    }
+    this.setupPeerConnection();
   }
 
   // Public Connection Methods
-  async connectAsReceiver(connectionCode: string, callbacks: WebRTCServiceCallbacks): Promise<void> {
-    await this.initializeConnection(connectionCode, false, callbacks);
+  connectAsReceiver(connectionCode: string, callbacks: WebRTCServiceCallbacks): void {
+    this.initializeConnection(connectionCode, false, callbacks);
     this.connectWebSocket();
   }
 
-  async connectAsSender(connectionCode: string, callbacks: WebRTCServiceCallbacks): Promise<void> {
-    await this.initializeConnection(connectionCode, true, callbacks);
+  connectAsSender(connectionCode: string, callbacks: WebRTCServiceCallbacks): void {
+    this.initializeConnection(connectionCode, true, callbacks);
     
     // Don't create data channel or start WebRTC connection yet
     // Wait for receiver to join first
@@ -127,7 +114,7 @@ export class WebRTCService {
     this.connectWebSocket();
   }
 
-  private async initializeConnection(roomId: string, isSender: boolean, callbacks: WebRTCServiceCallbacks): Promise<void> {
+  private initializeConnection(roomId: string, isSender: boolean, callbacks: WebRTCServiceCallbacks): void {
     this.disconnect();
     this.roomId = roomId;
     this.isSender = isSender;
@@ -137,51 +124,40 @@ export class WebRTCService {
     this.pendingReceiverJoined = false;
     this.receiverJoined = false;
     this.webrtcInitiated = false;
-    this.peerConnectionInitialized = false;
-    await this.setupPeerConnection();
-    this.peerConnectionInitialized = true;
+    this.setupPeerConnection();
   }
 
   // WebRTC Peer Connection Setup
-  private async setupPeerConnection(): Promise<void> {
+  private setupPeerConnection(): void {
     if (this.pc) {
       this.pc.close();
       this.pc = null;
     }
 
-    try {
-      // Fetch TURN credentials
-      const turnCreds = await fetch("/api/turn-credentials").then(r => r.json());
+    // const configuration: RTCConfiguration = {
+    //   iceServers: [
+    //     { urls: 'stun:stun.l.google.com:19302' },
+    //     { urls: 'stun:stun1.l.google.com:19302' },
+    //     { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+    //     { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
+    //   ],
+    //   iceCandidatePoolSize: 10
+    // };
 
-      const configuration: RTCConfiguration = {
-        iceServers: [
-          { urls: "stun:peershare.tech:3478" },
-          {
-            urls: "turns:peershare.tech:5349",
-            username: turnCreds.username,
-            credential: turnCreds.credential
-          }
-        ],
-        iceCandidatePoolSize: 10
-      };
 
-      this.pc = new RTCPeerConnection(configuration);
-    } catch (error) {
-      console.warn('Failed to fetch TURN credentials, falling back to public STUN servers:', error);
-      
-      // Fallback configuration
-      const configuration: RTCConfiguration = {
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
-          { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-          { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
-        ],
-        iceCandidatePoolSize: 10
-      };
+    const configuration: RTCConfiguration = {
+      iceServers: [
+        { urls: "stun:peershare.tech:3478" },
+        {
+          urls: "turns:peershare.tech:5349",
+          username: 'peershareuser',
+          credential: 'peersharepassword'
+        }
+      ],
+      iceCandidatePoolSize: 10
+    };
 
-      this.pc = new RTCPeerConnection(configuration);
-    }
+    this.pc = new RTCPeerConnection(configuration);
 
     this.pc.onicecandidate = (event) => {
       if (event.candidate && this.ws && this.ws.readyState === WebSocket.OPEN && !this.isDisconnecting && this.webrtcInitiated) {
@@ -245,27 +221,28 @@ export class WebRTCService {
     };
   }
 
+  private setConnectionTimeout(): void {
+    this.clearConnectionTimeout();
+    this.connectionTimeout = setTimeout(() => {
+      if (this.pc && this.pc.iceConnectionState === 'checking') {
+        console.error('Connection timeout: ICE checking took too long');
+        this.safeCallback('onConnectionStateChange', WebRTCConnectionState.Failed);
+      }
+    }, 30000); // 30 second timeout
+  }
+
+  private clearConnectionTimeout(): void {
+    if (this.connectionTimeout) {
+      clearTimeout(this.connectionTimeout);
+      this.connectionTimeout = null;
+    }
+  }
+
   // Initialize WebRTC connection process - only called when receiver joins
-  private async initializeWebRTCConnection(): Promise<void> {
+  private initializeWebRTCConnection(): void {
     if (this.webrtcInitiated || !this.receiverJoined) {
       console.log('WebRTC already initiated or receiver not joined yet');
       return;
-    }
-
-    // Wait for peer connection to be initialized
-    if (!this.peerConnectionInitialized) {
-      console.log('Waiting for peer connection to be initialized...');
-      // Wait up to 5 seconds for initialization
-      for (let i = 0; i < 50; i++) {
-        if (this.peerConnectionInitialized) break;
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-      
-      if (!this.peerConnectionInitialized) {
-        console.error('Peer connection initialization timeout');
-        this.safeCallback('onConnectionStateChange', WebRTCConnectionState.Failed);
-        return;
-      }
     }
 
     console.log('Initializing WebRTC connection process...');
@@ -283,32 +260,6 @@ export class WebRTCService {
       setTimeout(() => {
         this.createOfferWithRetry();
       }, 100); // Small delay to ensure everything is ready
-    }
-  }
-
-  async createOffer(): Promise<void> {
-    console.log('Direct createOffer called - delegating to retry mechanism');
-    if (this.receiverJoined) {
-      await this.createOfferWithRetry();
-    } else {
-      console.log('Cannot create offer: receiver has not joined yet');
-    }
-  }
-
-  private setConnectionTimeout(): void {
-    this.clearConnectionTimeout();
-    this.connectionTimeout = setTimeout(() => {
-      if (this.pc && this.pc.iceConnectionState === 'checking') {
-        console.error('Connection timeout: ICE checking took too long');
-        this.safeCallback('onConnectionStateChange', WebRTCConnectionState.Failed);
-      }
-    }, 30000); // 30 second timeout
-  }
-
-  private clearConnectionTimeout(): void {
-    if (this.connectionTimeout) {
-      clearTimeout(this.connectionTimeout);
-      this.connectionTimeout = null;
     }
   }
 
@@ -589,7 +540,7 @@ export class WebRTCService {
             this.safeCallback('onReceiverJoined');
             
             // Now initialize the WebRTC connection process
-            await this.initializeWebRTCConnection();
+            this.initializeWebRTCConnection();
           }
           break;
 
@@ -612,6 +563,15 @@ export class WebRTCService {
       }
     } catch (error) {
       console.error('Error processing WebRTC signaling message:', message.type, error);
+    }
+  }
+
+  async createOffer(): Promise<void> {
+    console.log('Direct createOffer called - delegating to retry mechanism');
+    if (this.receiverJoined) {
+      await this.createOfferWithRetry();
+    } else {
+      console.log('Cannot create offer: receiver has not joined yet');
     }
   }
 
@@ -1242,7 +1202,6 @@ export class WebRTCService {
     this.pendingReceiverJoined = false;
     this.receiverJoined = false;
     this.webrtcInitiated = false;
-    this.peerConnectionInitialized = false;
     this.isDisconnecting = false;
   }
 }
