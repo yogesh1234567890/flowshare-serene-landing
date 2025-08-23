@@ -29,10 +29,10 @@ const FAQ = () => {
   ];
 
   return (
-    <section className="py-20 px-4 bg-white">
+    <section className="py-20 px-4 bg-white" aria-labelledby="faq-heading">
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+          <h2 id="faq-heading" className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
             Frequently Asked <span className="text-blue-600">Questions</span>
           </h2>
           <p className="text-xl text-gray-600">
@@ -46,9 +46,11 @@ const FAQ = () => {
               key={index}
               className="bg-gray-50 rounded-2xl overflow-hidden transition-all duration-300 hover:bg-gray-100"
             >
-              <button
-                className="w-full px-8 py-6 text-left flex items-center justify-between focus:outline-none"
+               <button
+                className="w-full px-8 py-6 text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-t-2xl"
                 onClick={() => setOpenIndex(openIndex === index ? null : index)}
+                aria-expanded={openIndex === index}
+                aria-controls={`faq-answer-${index}`}
               >
                 <h3 className="text-lg font-semibold text-gray-900 pr-4">
                   {faq.question}
@@ -61,9 +63,14 @@ const FAQ = () => {
                 />
               </button>
               
-              <div className={`px-8 overflow-hidden transition-all duration-300 ${
-                openIndex === index ? 'pb-6 max-h-96 opacity-100' : 'max-h-0 opacity-0'
-              }`}>
+              <div 
+                id={`faq-answer-${index}`}
+                className={`px-8 overflow-hidden transition-all duration-300 ${
+                  openIndex === index ? 'pb-6 max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                }`}
+                role="region"
+                aria-labelledby={`faq-question-${index}`}
+              >
                 <p className="text-gray-600 leading-relaxed">
                   {faq.answer}
                 </p>

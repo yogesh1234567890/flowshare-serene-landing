@@ -24,10 +24,10 @@ const ProcessSteps = () => {
   ];
 
   return (
-    <section id="how-it-works" className="py-20 px-4 bg-white relative">
+    <section id="how-it-works" className="py-20 px-4 bg-white relative" aria-labelledby="steps-heading">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+          <h2 id="steps-heading" className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
             Share in <span className="text-blue-600">3 Simple Steps</span>
           </h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
@@ -37,19 +37,19 @@ const ProcessSteps = () => {
         
         <div className="grid md:grid-cols-3 gap-8 md:gap-12">
           {steps.map((step, index) => (
-            <div 
+            <article 
               key={index} 
               className="relative group text-center hover:transform hover:scale-105 transition-all duration-300"
             >
-              <div className={`inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-r ${step.color} text-white mb-6 shadow-lg group-hover:shadow-xl transition-shadow duration-300`}>
+              <div className={`inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-r ${step.color} text-white mb-6 shadow-lg group-hover:shadow-xl transition-shadow duration-300`} aria-hidden="true">
                 <step.icon size={32} />
               </div>
               
-              <div className="absolute -top-2 -left-2 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-lg">
+              <div className="absolute -top-2 -left-2 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-lg" aria-label={`Step ${index + 1}`}>
                 {index + 1}
               </div>
               
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">{step.title}</h3>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">{step.title}</h2>
               <p className="text-gray-600 leading-relaxed">{step.description}</p>
               
               {/* Connecting arrow for desktop */}
@@ -60,7 +60,7 @@ const ProcessSteps = () => {
                   </svg>
                 </div>
               )}
-            </div>
+            </article>
           ))}
         </div>
       </div>

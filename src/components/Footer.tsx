@@ -3,7 +3,7 @@ import { Heart } from "lucide-react";
 
 const Footer = () => {
   return (
-    <footer className="bg-gray-900 text-white py-16 px-4">
+    <footer className="bg-gray-900 text-white py-16 px-4" role="contentinfo">
       <div className="max-w-6xl mx-auto">
         <div className="grid md:grid-cols-4 gap-8 mb-12">
           <div className="md:col-span-2">
@@ -22,17 +22,19 @@ const Footer = () => {
           
           <div>
             <h4 className="font-semibold mb-4 text-blue-400">Product</h4>
-            <ul className="space-y-2 text-gray-400">
-               <li><a href="#how-it-works" className="hover:text-white transition-colors" onClick={(e) => {
-                 e.preventDefault();
-                 const element = document.getElementById('how-it-works');
-                 if (element) {
-                   element.scrollIntoView({ behavior: 'smooth' });
-                 }
-               }}>How it Works</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Features</a></li>
-              <li><a href="/security" className="hover:text-white transition-colors">Security</a></li>
-            </ul>
+            <nav aria-label="Product links">
+              <ul className="space-y-2 text-gray-400">
+                <li><a href="#how-it-works" className="hover:text-white transition-colors" onClick={(e) => {
+                  e.preventDefault();
+                  const element = document.getElementById('how-it-works');
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}>How it Works</a></li>
+                <li><a href="/#features" className="hover:text-white transition-colors">Features</a></li>
+                <li><a href="/security" className="hover:text-white transition-colors">Security</a></li>
+              </ul>
+            </nav>
           </div>
           
           <div>

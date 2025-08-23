@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 
 const Hero = () => {
   return (
-    <section className="relative py-20 px-4 text-center overflow-hidden">
+    <section className="relative py-20 px-4 text-center overflow-hidden" aria-labelledby="hero-heading">
       {/* Background decoration */}
       <div className="absolute inset-0 -z-10">
         <div className="absolute top-20 left-1/4 w-64 h-64 bg-blue-200/30 rounded-full blur-3xl"></div>
@@ -13,7 +13,7 @@ const Hero = () => {
       </div>
 
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-5xl md:text-7xl font-bold text-gray-900 mb-6 leading-tight">
+        <h1 id="hero-heading" className="text-5xl md:text-7xl font-bold text-gray-900 mb-6 leading-tight">
           Share Files
           <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-teal-500">
             Instantly
