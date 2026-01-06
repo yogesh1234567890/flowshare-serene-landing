@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { WebRTCService } from '@/services/webrtcService';
+import { WebRTCService, FileTransferInfo } from '@/services/webrtcService';
 import { toast } from '@/hooks/use-toast';
 
 export const useWebRTC = () => {
@@ -10,6 +10,7 @@ export const useWebRTC = () => {
   const [fileInfoMap, setFileInfoMap] = useState<Map<string, { name: string; size: number }>>(new Map());
   const [peerConnected, setPeerConnected] = useState(false);
   const [receiverConnected, setReceiverConnected] = useState(false);
+  const [incomingFile, setIncomingFile] = useState<FileTransferInfo | null>(null);
   const webrtcService = useRef<WebRTCService | null>(null);
 
   const initializeAsSender = useCallback((roomId: string) => {
@@ -44,6 +45,24 @@ export const useWebRTC = () => {
           setFileTransferProgress(prev => new Map(prev.set(fileId, progress)));
         }
         console.log('File transfer progress:', progress, fileId);
+      },
+      onTransferError: (fileId, error) => {
+          console.error(`Transfer error for ${fileId}: ${error}`);
+          if (fileId) {
+              setFileInfoMap(prev => {
+                  const info = prev.get(fileId);
+                  if (info) {
+                      return new Map(prev.set(fileId, { ...info, status: 'error' } as any));
+                  }
+                  return prev;
+              });
+              setFileTransferProgress(prev => new Map(prev.set(fileId, 0))); // Reset or signal error via progress?
+          }
+          toast({
+              title: "❌ Transfer Error",
+              description: error,
+              variant: "destructive"
+          });
       },
       onWebSocketConnected: () => {
         setIsWebSocketConnected(true);
@@ -103,11 +122,32 @@ export const useWebRTC = () => {
           description: "Secure channel established",
         });
       },
+      onIncomingFile: (fileInfo) => {
+        console.log('Incoming file offer:', fileInfo);
+        setIncomingFile(fileInfo);
+        toast({
+          title: "📥 Incoming File",
+          description: `Sender wants to send ${fileInfo.name} (${formatBytes(fileInfo.size)})`,
+          duration: 10000,
+        });
+      },
       onFileReceived: (file) => {
         console.log('File received:', file);
+        setIncomingFile(null); // Clear incoming state
         
-        // Create download link for received file
-        const blob = new Blob([file.data], { type: 'application/octet-stream' });
+        // If data is null/empty blob (streamed to disk), we just notify
+        // If data is populated (memory), we trigger download
+        
+        if ((file.data instanceof ArrayBuffer && file.data.byteLength === 0) || (file.data instanceof Blob && file.data.size === 0)) {
+             toast({
+              title: "✅ File Saved",
+              description: `${file.name} has been saved to your device.`,
+            });
+            return;
+        }
+
+        // Create download link for received file (Fallback mode)
+        const blob = file.data instanceof Blob ? file.data : new Blob([file.data], { type: 'application/octet-stream' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -125,21 +165,7 @@ export const useWebRTC = () => {
       onProgressUpdate: (progress, fileId) => {
         if (fileId) {
           setFileTransferProgress(prev => new Map(prev.set(fileId, progress)));
-          
-          // Try to get file info from the service if available (first time)
-          if (progress === 1 && webrtcService.current) {
-            // Access the file transfer info from the service
-            const fileTransfers = (webrtcService.current as any).fileTransfers;
-            if (fileTransfers && fileTransfers.has(fileId)) {
-              const fileInfo = fileTransfers.get(fileId);
-              setFileInfoMap(prev => new Map(prev.set(fileId, { 
-                name: fileInfo.name, 
-                size: fileInfo.size 
-              })));
-            }
-          }
         }
-        console.log('File receive progress:', progress, fileId);
       },
       onWebSocketConnected: () => {
         setIsWebSocketConnected(true);
@@ -159,9 +185,54 @@ export const useWebRTC = () => {
     });
   }, []);
 
-  const sendFile = useCallback((file: File): string => {
+  const acceptIncomingFile = useCallback(async () => {
+    if (!incomingFile || !webrtcService.current) return;
+
+    let fileStream: any = undefined;
+
+    // Try File System Access API
+    if ('showSaveFilePicker' in window) {
+      try {
+        const handle = await (window as any).showSaveFilePicker({
+          suggestedName: incomingFile.name,
+        });
+        fileStream = await handle.createWritable();
+        toast({
+          title: "💾 Saving to Disk",
+          description: "File will be streamed directly to your selected location.",
+        });
+      } catch (err) {
+        console.warn('File picker cancelled or failed:', err);
+        if ((err as Error).name === 'AbortError') {
+             return;
+        }
+      }
+    } else {
+       toast({
+          title: "⚠️ Large File Warning",
+          description: "Browser file system not supported. Files >1GB may crash your tab.",
+          variant: "destructive",
+          duration: 8000
+        });
+    }
+
+    webrtcService.current.acceptFileTransfer(incomingFile.id, fileStream);
+    setIncomingFile(null); // Clear prompt
+  }, [incomingFile]);
+
+  // Helper for formatting bytes
+  const formatBytes = (bytes: number, decimals = 2) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+  };
+
+  const sendFile = useCallback(async (file: File): Promise<string> => {
     if (webrtcService.current && isDataChannelOpen) {
-      const webrtcFileId = webrtcService.current.sendFile(file);
+      const webrtcFileId = await webrtcService.current.sendFile(file);
       toast({
         title: "📤 Sending File",
         description: `Starting transfer of ${file.name}`,
@@ -204,6 +275,8 @@ export const useWebRTC = () => {
     initializeAsSender,
     initializeAsReceiver,
     sendFile,
-    disconnect
+    disconnect,
+    incomingFile,
+    acceptIncomingFile
   };
 };

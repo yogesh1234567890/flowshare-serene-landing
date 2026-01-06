@@ -16,13 +16,16 @@ const Hero = () => {
         <h1 id="hero-heading" className="text-5xl md:text-7xl font-bold text-gray-900 mb-6 leading-tight">
           Share Files
           <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-teal-500">
-            Instantly
+            Instantly & Securely
           </span>
         </h1>
-        
+
         <p className="text-xl md:text-2xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
-          Direct peer-to-peer file sharing with end-to-end encryption. 
-          No uploads, no limits, no compromises on privacy.
+          The most secure way to share files. Zero Limits. Zero Fees. Zero Trust Architecture.
+          <br />
+          <span className="text-base text-gray-500 mt-2 block">
+            Powered by WebRTC & AES-256-GCM Encryption
+          </span>
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
@@ -31,9 +34,9 @@ const Hero = () => {
               Start Sharing
             </Button>
           </Link>
-          <Button 
-            variant="outline" 
-            size="lg" 
+          <Button
+            variant="outline"
+            size="lg"
             className="text-lg px-8 py-4 rounded-full border-2 hover:bg-gray-50 transition-all duration-200"
             onClick={() => {
               const element = document.getElementById('how-it-works');

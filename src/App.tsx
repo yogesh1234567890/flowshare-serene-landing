@@ -1,34 +1,49 @@
-
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import Index from "./pages/Index";
 import FileShare from "./pages/FileShare";
 import FileReceive from "./pages/FileReceive";
 import Security from "./pages/Security";
+// import Upgrade from "./pages/Upgrade";
 import NotFound from "./pages/NotFound";
+import { initGTM, trackPageView } from "@/utils/gtm";
 
-const queryClient = new QueryClient();
+// Component to track page views on route changes
+const PageViewTracker = () => {
+  const location = useLocation();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
+  useEffect(() => {
+    // Track page view on route change
+    trackPageView(location.pathname, document.title);
+  }, [location]);
+
+  return null;
+};
+
+const App = () => {
+  useEffect(() => {
+    // Initialize GTM on app load
+    initGTM();
+  }, []);
+
+  return (
     <TooltipProvider>
       <Toaster />
-      <Sonner />
       <BrowserRouter>
+        <PageViewTracker />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/share" element={<FileShare />} />
           <Route path="/receive" element={<FileReceive />} />
           <Route path="/security" element={<Security />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          {/* <Route path="/upgrade" element={<Upgrade />} /> */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
-  </QueryClientProvider>
-);
+  );
+};
 
 export default App;

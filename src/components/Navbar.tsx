@@ -1,11 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Menu, X, Upload, Download, Home } from 'lucide-react';
+import { Menu, X, Upload, Download, Home, Crown } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import { monetizationService, UserTier } from '@/services/monetizationService';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [userTier, setUserTier] = useState<UserTier>(UserTier.FREE);
   const location = useLocation();
+
+  useEffect(() => {
+    // const interval = setInterval(loadSubscription, 60000);
+    // return () => clearInterval(interval);
+    
+    // For now, just use local tier
+    setUserTier(monetizationService.getUserTier());
+  }, []);
 
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
@@ -46,6 +56,23 @@ const Navbar = () => {
                 <span>{item.name}</span>
               </Link>
             ))}
+            {/* {userTier === UserTier.FREE ? (
+              <Link
+                to="/upgrade"
+                className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium bg-gradient-to-r from-amber-500 to-yellow-500 text-white hover:from-amber-600 hover:to-yellow-600 transition-all"
+              >
+                <Crown className="w-4 h-4" />
+                <span>Upgrade</span>
+              </Link>
+            ) : (
+              <Link
+                to="/upgrade"
+                className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-amber-600 hover:text-amber-700 border border-amber-300 hover:border-amber-400 transition-all"
+              >
+                <Crown className="w-4 h-4" />
+                <span className="capitalize">{userTier}</span>
+              </Link>
+            )} */}
           </div>
 
           {/* Mobile menu button */}

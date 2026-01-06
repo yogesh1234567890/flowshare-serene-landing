@@ -1,58 +1,74 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PeerShare – Secure Peer-to-Peer File Sharing</title>
-    <meta name="author" content="PeerShare Team" />
-    <meta
-      name="description"
-      content="PeerShare is a secure, fast, and privacy-focused peer-to-peer file sharing platform. Transfer files directly without uploading to a server."
-    />
-    <meta
-      name="keywords"
-      content="peer to peer file sharing, file transfer, secure file sharing, p2p, send files, receive files, privacy file transfer, PeerShare"
-    />
-    <meta property="og:title" content="PeerShare – Secure Peer-to-Peer File Sharing" />
-    <meta
-      property="og:description"
-      content="Instantly send and receive files without the cloud. Peer-to-peer file sharing with no limits and total privacy."
-    />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://peershare.tech" />
-    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
 
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="PeerShare – Secure Peer-to-Peer File Sharing" />
-    <meta
-      name="twitter:description"
-      content="Secure and private P2P file transfers. No accounts. No uploads. Just fast file sharing."
-    />
-    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
-    <meta name="twitter:site" content="@lovable_dev" />
-    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="shortcut icon" href="/favicon.ico" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <meta name="apple-mobile-web-app-title" content="PeerShare" />
-    <link rel="manifest" href="/site.webmanifest" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="dns-prefetch" href="https://lovable.dev" />
-    <meta name="theme-color" content="#3b82f6" />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PeerShare – Secure Peer-to-Peer File Sharing</title>
+  <meta name="author" content="PeerShare Team" />
+  <meta name="description"
+    content="PeerShare is a secure, fast, and privacy-focused peer-to-peer file sharing platform. Transfer files directly without uploading to a server." />
+  <meta name="keywords"
+    content="peer to peer file sharing, file transfer, secure file sharing, p2p, send files, receive files, privacy file transfer, PeerShare" />
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+  <meta property="og:title" content="PeerShare – Secure Peer-to-Peer File Sharing" />
+  <meta property="og:description"
+    content="Instantly send and receive files without the cloud. Peer-to-peer file sharing with no limits and total privacy." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://peershare.tech" />
+  <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
 
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-PDMPXKP3LV"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag() {
-        dataLayer.push(arguments);
-      }
-      gtag('js', new Date());
-      gtag('config', 'G-PDMPXKP3LV');
-    </script>
-  </head>
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="PeerShare – Secure Peer-to-Peer File Sharing" />
+  <meta name="twitter:description"
+    content="Secure and private P2P file transfers. No accounts. No uploads. Just fast file sharing." />
+  <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+  <meta name="twitter:site" content="@lovable_dev" />
+  <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-title" content="PeerShare" />
+  <link rel="manifest" href="/site.webmanifest" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="dns-prefetch" href="https://lovable.dev" />
+  <meta name="theme-color" content="#3b82f6" />
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  
+  <!-- Preconnect to improve performance -->
+  <link rel="preconnect" href="https://www.googletagmanager.com" />
+  <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+  
+  <!-- Google Tag Manager -->
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    // GTM Container ID from environment variable or default
+    const GTM_ID = '%VITE_GTM_ID%' !== '%' + 'VITE_GTM_ID' + '%' ? '%VITE_GTM_ID%' : 'GTM-XXXXXXX';
+    
+    if (GTM_ID && GTM_ID !== 'GTM-XXXXXXX') {
+      (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+      new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+      j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+      'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+      })(window,document,'script','dataLayer',GTM_ID);
+    }
+  </script>
+  <!-- End Google Tag Manager -->
+</head>
 
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<body>
+  <!-- Google Tag Manager (noscript) -->
+  <noscript>
+    <iframe src="https://www.googletagmanager.com/ns.html?id=%VITE_GTM_ID%"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe>
+  </noscript>
+  <!-- End Google Tag Manager (noscript) -->
+  
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
 </html>

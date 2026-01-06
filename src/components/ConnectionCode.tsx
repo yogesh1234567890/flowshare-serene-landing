@@ -15,7 +15,7 @@ const ConnectionCode = ({ code, onRefresh }: ConnectionCodeProps) => {
         <Button
           size="sm"
           onClick={onRefresh}
-          className="absolute top-2 right-2 flex items-center gap-2 bg-white text-blue-600 rounded-lg px-3 py-1.5 hover:scale-105 hover:bg-blue-50 transition-all"
+          className="absolute top-2 right-2 flex items-center gap-1 sm:gap-2 bg-white text-blue-600 rounded-lg px-2 sm:px-3 py-1.5 hover:scale-105 hover:bg-blue-50 transition-all touch-manipulation"
           title="Refresh Code"
           aria-label="Refresh Code"
         >
@@ -23,17 +23,17 @@ const ConnectionCode = ({ code, onRefresh }: ConnectionCodeProps) => {
         </Button>
 
       )}
-      <CardContent className="p-6 text-center">
-        <h3 className="text-sm font-medium mb-2 opacity-90">Connection Code</h3>
-        <div className="text-3xl font-bold tracking-wider mb-2 font-mono">
+      <CardContent className="p-4 sm:p-6 text-center">
+        <h3 className="text-xs sm:text-sm font-medium mb-2 opacity-90">Connection Code</h3>
+        <div className="text-2xl sm:text-3xl font-bold tracking-wider mb-2 font-mono break-all">
           {code}
         </div>
-        <p className="text-sm opacity-75">
+        <p className="text-xs sm:text-sm opacity-75 px-2">
           Share this code with the recipient
         </p>
-        <div className="mt-4 flex items-center justify-center gap-2">
+        <div className="mt-3 sm:mt-4 flex items-center justify-center gap-2">
           <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-          <span className="text-sm">Active Connection</span>
+          <span className="text-xs sm:text-sm">Active Connection</span>
         </div>
       </CardContent>
     </Card>

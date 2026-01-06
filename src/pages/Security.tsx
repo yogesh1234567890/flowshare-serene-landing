@@ -7,8 +7,16 @@ const Security = () => {
   useSEO({
     title: "Security & Privacy | PeerShare - End-to-End Encrypted File Sharing",
     description: "Learn about PeerShare's security features: end-to-end encryption, no server storage, zero tracking. Military-grade AES-256 encryption for complete privacy.",
-    keywords: "file sharing security, end-to-end encryption, privacy protection, secure file transfer, AES-256 encryption, peer to peer security",
-    canonicalUrl: "https://peershare.tech/security"
+    keywords: "file sharing security, end-to-end encryption, privacy protection, secure file transfer, AES-256 encryption, peer to peer security, zero-knowledge encryption, WebRTC security",
+    canonicalUrl: "https://peershare.tech/security",
+    structuredData: {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "name": "Security & Privacy - PeerShare",
+      "description": "Learn about PeerShare's security features and privacy protections",
+      "url": "https://peershare.tech/security",
+      "inLanguage": "en-US"
+    }
   });
 
   return (

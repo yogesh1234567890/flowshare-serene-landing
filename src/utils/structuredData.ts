@@ -2,42 +2,70 @@ export const createWebsiteStructuredData = () => ({
   "@context": "https://schema.org",
   "@type": "WebSite",
   "name": "PeerShare",
-  "description": "Secure, fast, and privacy-focused peer-to-peer file sharing platform",
+  "alternateName": "PeerShare - P2P File Sharing",
+  "description": "Secure, fast, and privacy-focused peer-to-peer file sharing platform. Transfer files directly between devices with end-to-end encryption, no file size limits, and no server uploads.",
   "url": "https://peershare.tech",
-  "logo": "https://peershare.tech/favicon.png",
+  "logo": {
+    "@type": "ImageObject",
+    "url": "https://peershare.tech/favicon-96x96.png",
+    "width": 96,
+    "height": 96
+  },
   "sameAs": [
-    "https://twitter.com/lovable_dev"
+    "https://twitter.com/peershare_tech"
   ],
   "potentialAction": {
     "@type": "SearchAction",
-    "target": "https://peershare.tech/search?q={search_term_string}",
+    "target": {
+      "@type": "EntryPoint",
+      "urlTemplate": "https://peershare.tech/search?q={search_term_string}"
+    },
     "query-input": "required name=search_term_string"
-  }
+  },
+  "inLanguage": "en-US",
+  "isAccessibleForFree": true
 });
 
 export const createSoftwareApplicationStructuredData = () => ({
   "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
+  "@type": "WebApplication",
   "name": "PeerShare",
-  "description": "Direct peer-to-peer file sharing with end-to-end encryption. No uploads, no limits, no compromises on privacy.",
-  "applicationCategory": "UtilitiesApplication",
+  "alternateName": "PeerShare File Transfer",
+  "description": "Direct peer-to-peer file sharing with end-to-end encryption. No uploads, no limits, no compromises on privacy. Transfer files directly between devices using WebRTC technology.",
+  "applicationCategory": "UtilityApplication",
   "operatingSystem": "Web Browser, Windows, macOS, Linux, iOS, Android",
+  "browserRequirements": "Requires JavaScript. Requires HTML5. Requires WebRTC support.",
   "url": "https://peershare.tech",
-  "screenshot": "https://lovable.dev/opengraph-image-p98pqg.png",
+  "screenshot": "https://peershare.tech/og-image.png",
+  "softwareVersion": "1.0.0",
+  "datePublished": "2024-01-01",
+  "dateModified": "2024-12-19",
   "offers": {
     "@type": "Offer",
     "price": "0",
-    "priceCurrency": "USD"
+    "priceCurrency": "USD",
+    "availability": "https://schema.org/InStock"
   },
   "aggregateRating": {
     "@type": "AggregateRating",
     "ratingValue": "4.9",
-    "reviewCount": "127"
+    "reviewCount": "127",
+    "bestRating": "5",
+    "worstRating": "1"
   },
   "author": {
     "@type": "Organization",
-    "name": "PeerShare Team"
-  }
+    "name": "PeerShare",
+    "url": "https://peershare.tech"
+  },
+  "featureList": [
+    "End-to-end encryption",
+    "No file size limits",
+    "Direct P2P transfer",
+    "No server uploads",
+    "Zero-knowledge architecture",
+    "Cross-platform support"
+  ]
 });
 
 export const createHowToStructuredData = () => ({
@@ -45,7 +73,7 @@ export const createHowToStructuredData = () => ({
   "@type": "HowTo",
   "name": "How to Share Files with PeerShare",
   "description": "Learn how to securely share files using peer-to-peer technology",
-  "image": "https://lovable.dev/opengraph-image-p98pqg.png",
+  "image": "https://peershare.tech/og-image.png",
   "totalTime": "PT2M",
   "estimatedCost": {
     "@type": "MonetaryAmount",
@@ -67,19 +95,19 @@ export const createHowToStructuredData = () => ({
       "@type": "HowToStep",
       "name": "Select Files",
       "text": "Choose any file from your device. No size limits, any format welcome.",
-      "image": "https://peershare.tech/step1.png"
+      "image": "https://peershare.tech/og-image.png"
     },
     {
       "@type": "HowToStep",
-      "name": "Share Link",
-      "text": "Get an instant secure link. Share it however you like - text, email, or chat.",
-      "image": "https://peershare.tech/step2.png"
+      "name": "Share Connection Code",
+      "text": "Get an instant secure connection code. Share it with the recipient via text, email, or chat.",
+      "image": "https://peershare.tech/og-image.png"
     },
     {
       "@type": "HowToStep",
       "name": "Direct Transfer",
-      "text": "Files transfer directly between devices. Fast, private, and secure.",
-      "image": "https://peershare.tech/step3.png"
+      "text": "Files transfer directly between devices using WebRTC. Fast, private, and secure with optional end-to-end encryption.",
+      "image": "https://peershare.tech/og-image.png"
     }
   ]
 });

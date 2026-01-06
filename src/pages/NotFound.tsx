@@ -2,6 +2,7 @@ import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
 import { useSEO } from "@/hooks/useSEO";
 import { Button } from "@/components/ui/button";
+import { trackError } from "@/utils/gtm";
 
 const NotFound = () => {
   const location = useLocation();
@@ -9,10 +10,13 @@ const NotFound = () => {
   useSEO({
     title: "Page Not Found (404) | PeerShare",
     description: "Sorry, the page you're looking for doesn't exist. Return to PeerShare to start sharing files securely.",
-    canonicalUrl: "https://peershare.tech/404"
+    canonicalUrl: "https://peershare.tech/404",
+    noindex: true
   });
 
   useEffect(() => {
+    // Track 404 error
+    trackError('404_not_found', `Page not found: ${location.pathname}`, 'NotFound');
     console.error(
       "404 Error: User attempted to access non-existent route:",
       location.pathname

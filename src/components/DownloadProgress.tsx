@@ -62,35 +62,36 @@ const DownloadProgress = ({ downloadFile }: DownloadProgressProps) => {
   return (
     <TransferHeartbeat isActive={isActiveTransfer}>
       <Card className="transform transition-all duration-500 animate-scale-in hover:shadow-lg">
-        <CardContent className="p-6">
-          <div className="flex items-center gap-3 mb-4">
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
             {getStatusIcon()}
-            <h3 className="text-lg font-semibold flex-1">
-              File Transfer
+            <h3 className="text-base sm:text-lg font-semibold flex-1 min-w-0">
+              <span className="hidden sm:inline">File Transfer</span>
+              <span className="sm:hidden">Transfer</span>
             </h3>
-            <span className="text-sm font-medium text-gray-600">
+            <span className="text-sm font-medium text-gray-600 flex-shrink-0">
               {Math.round(downloadFile.progress)}%
             </span>
           </div>
 
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Download className="w-5 h-5 text-blue-600" />
+          <div className="space-y-3 sm:space-y-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Download className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
+                <p className="text-xs sm:text-sm font-medium text-gray-900 truncate">
                   {downloadFile.name}
                 </p>
                 <p className="text-xs text-gray-500">
                   {downloadFile.size > 0 ? formatFileSize(downloadFile.size) : 'Calculating size...'}
                 </p>
               </div>
-              <div className="text-right">
-                <p className="text-sm font-bold text-gray-900">
+              <div className="text-right flex-shrink-0">
+                <p className="text-xs sm:text-sm font-bold text-gray-900">
                   {downloadFile.speed}
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 hidden sm:block">
                   Transfer speed
                 </p>
               </div>
@@ -130,7 +131,7 @@ const DownloadProgress = ({ downloadFile }: DownloadProgressProps) => {
             )}
 
             {downloadFile.status === 'complete' && (
-              <Button className="w-full mt-4 transform transition-all duration-200 hover:scale-105 animate-fade-in bg-green-600 hover:bg-green-700">
+              <Button className="w-full mt-3 sm:mt-4 transform transition-all duration-200 hover:scale-105 animate-fade-in bg-green-600 hover:bg-green-700 touch-manipulation text-sm sm:text-base">
                 🎉 File Downloaded Successfully
               </Button>
             )}
@@ -138,7 +139,7 @@ const DownloadProgress = ({ downloadFile }: DownloadProgressProps) => {
             {downloadFile.status === 'error' && (
               <Button 
                 variant="destructive" 
-                className="w-full mt-4 transform transition-all duration-200 hover:scale-105 animate-fade-in"
+                className="w-full mt-3 sm:mt-4 transform transition-all duration-200 hover:scale-105 animate-fade-in touch-manipulation text-sm sm:text-base"
               >
                 ❌ Transfer Failed - Retry
               </Button>

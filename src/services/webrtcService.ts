@@ -1,5 +1,7 @@
+import { trackFileSend, trackFileReceive, trackFileTransferComplete, trackConnectionEstablished, trackConnectionFailed, trackError } from '@/utils/gtm';
+
 export interface WebRTCMessage {
-  type: 'offer' | 'answer' | 'ice-candidate' | 'connection-code' | 'file-info' | 'file-chunk' | 'file-complete' | 'receiver-joined' | 'receiver-ready' | 'file-chunk-ack' | 'file-transfer-cancel';
+  type: 'offer' | 'answer' | 'ice-candidate' | 'connection-code' | 'file-info' | 'file-chunk' | 'file-complete' | 'receiver-joined' | 'receiver-ready' | 'file-chunk-ack' | 'file-transfer-cancel' | 'file-transfer-accepted';
   data: any;
   roomId: string;
 }
@@ -39,12 +41,13 @@ export enum FileTransferStatus {
 interface WebRTCServiceCallbacks {
   onConnectionStateChange?: (state: WebRTCConnectionState) => void;
   onDataChannelOpen?: () => void;
-  onFileReceived?: (file: { name: string; size: number; data: ArrayBuffer }) => void;
+  onFileReceived?: (file: { name: string; size: number; data: ArrayBuffer | Blob }) => void;
   onProgressUpdate?: (progress: number, fileId?: string) => void;
   onWebSocketConnected?: () => void;
   onWebSocketError?: (error: Event) => void;
   onReceiverJoined?: () => void;
   onTransferError?: (fileId: string, error: string) => void;
+  onIncomingFile?: (fileInfo: FileTransferInfo) => void;
 }
 
 // Configuration interface for better type safety
@@ -54,6 +57,7 @@ interface WebRTCConfig {
   maxReconnectAttempts?: number;
   chunkAckTimeout?: number;
   maxChunkRetries?: number;
+  maxInFlightChunks?: number;
 }
 
 export class WebRTCService {
@@ -75,6 +79,12 @@ export class WebRTCService {
   // Sender state
   private sentChunksQueue: Map<string, { data: ArrayBuffer, sentTime: number, retries: number, chunkIndex: number }[]> = new Map();
   private chunkMonitorIntervals: Map<string, ReturnType<typeof setInterval>> = new Map();
+  private pendingFiles: Map<string, File> = new Map(); // Files waiting for acceptance
+  private transferStartTimes: Map<string, number> = new Map(); // Track transfer start times
+
+  // Stream to disk state
+  private fileStreams: Map<string, any> = new Map(); // Using 'any' for FileSystemWritableFileStream to avoid type issues
+  private streamPositions: Map<string, number> = new Map(); // Track cumulative position for each file stream
 
   // Configuration
   private config: Required<WebRTCConfig>;
@@ -92,7 +102,8 @@ export class WebRTCService {
       chunkSize: config.chunkSize || 64 * 1024, // 64KB
       maxReconnectAttempts: config.maxReconnectAttempts || 5,
       chunkAckTimeout: config.chunkAckTimeout || 5000, // 5 seconds
-      maxChunkRetries: config.maxChunkRetries || 3
+      maxChunkRetries: config.maxChunkRetries || 3,
+      maxInFlightChunks: config.maxInFlightChunks || 100
     };
     
     this.setupPeerConnection();
@@ -187,11 +198,16 @@ export class WebRTCService {
       const mappedState = stateMap[this.pc.connectionState] || WebRTCConnectionState.Disconnected;
       this.safeCallback('onConnectionStateChange', mappedState);
 
-      if (this.pc.connectionState === 'failed' && !this.isDisconnecting) {
+      // Track connection events
+      if (this.pc.connectionState === 'connected' || this.pc.connectionState === 'completed') {
+        trackConnectionEstablished(this.isSender ? 'sender' : 'receiver');
+      } else if (this.pc.connectionState === 'failed' && !this.isDisconnecting) {
         console.warn('WebRTC connection failed, attempting to restart ICE...');
+        trackConnectionFailed(this.isSender ? 'sender' : 'receiver', 'WebRTC connection failed');
         this.pc.restartIce();
       } else if (this.pc.connectionState === 'disconnected' && !this.isDisconnecting) {
         console.warn('WebRTC connection disconnected. File transfers may be interrupted.');
+        trackConnectionFailed(this.isSender ? 'sender' : 'receiver', 'WebRTC connection disconnected');
         this.cleanupFileTransfers(FileTransferStatus.Failed, 'WebRTC connection disconnected.');
       }
     };
@@ -539,6 +555,9 @@ export class WebRTCService {
             this.receiverJoined = true;
             this.safeCallback('onReceiverJoined');
             
+            // Track receiver joined
+            trackConnectionEstablished('sender');
+            
             // Now initialize the WebRTC connection process
             this.initializeWebRTCConnection();
           }
@@ -576,7 +595,7 @@ export class WebRTCService {
   }
 
   // Data Channel Message Handling
-  private handleDataChannelMessage(message: WebRTCMessage): void {
+  private async handleDataChannelMessage(message: WebRTCMessage): Promise<void> {
     switch (message.type) {
       case 'file-info':
         this.handleFileInfo(message.data);
@@ -591,6 +610,10 @@ export class WebRTCService {
         if (this.isSender) {
           this.handleChunkAck(message.data.fileId, message.data.chunkIndex);
         }
+      case 'file-transfer-accepted':
+        if (this.isSender) {
+          this.handleFileTransferAccepted(message.data.fileId);
+        }
         break;
     }
   }
@@ -601,6 +624,7 @@ export class WebRTCService {
     // Validate file info
     if (!fileInfo.id || !fileInfo.name || fileInfo.size <= 0 || fileInfo.chunks <= 0) {
       console.error('Invalid file info received:', fileInfo);
+      trackError('invalid_file_info', 'Invalid file info received', 'handleFileInfo');
       return;
     }
 
@@ -608,17 +632,88 @@ export class WebRTCService {
       console.warn(`File info for ${fileInfo.id} already exists. Overwriting.`);
     }
 
+    // Track file receive initiation
+    trackFileReceive({
+      fileName: fileInfo.name,
+      fileSize: fileInfo.size,
+      fileType: fileInfo.type || 'unknown'
+    });
+
     this.fileTransfers.set(fileInfo.id, { 
       ...fileInfo, 
-      status: FileTransferStatus.InProgress, 
+      status: FileTransferStatus.Pending, // Wait for acceptance
       receivedBytes: 0 
     });
     this.receivedChunks.set(fileInfo.id, new Array(fileInfo.chunks));
+    this.transferStartTimes.set(fileInfo.id, Date.now()); // Track transfer start time
     
-    this.safeCallback('onProgressUpdate', 0, fileInfo.id);
+    // Notify UI to accept/reject/stream
+    this.safeCallback('onIncomingFile', fileInfo);
   }
 
-  private handleBinaryChunk(data: ArrayBuffer): void {
+  // Accept file transfer
+  async acceptFileTransfer(fileId: string, fileStream?: any): Promise<void> {
+    const fileInfo = this.fileTransfers.get(fileId);
+    if (!fileInfo) {
+      console.error('Cannot accept unknown file:', fileId);
+      this.safeCallback('onTransferError', fileId, 'File not found.');
+      return;
+    }
+
+    // Setup file stream if provided
+    if (fileStream) {
+      this.fileStreams.set(fileId, fileStream);
+      this.streamPositions.set(fileId, 0);
+      console.log(`[${fileId}] File stream initialized for direct disk write`);
+    }
+
+    // Update status
+    fileInfo.status = FileTransferStatus.InProgress;
+    
+    // Notify sender we are ready (send via both channels for reliability)
+    const acceptanceMessage = {
+      type: 'file-transfer-accepted',
+      data: { fileId }
+    };
+    
+    this.sendMessage({
+      type: 'file-transfer-accepted',
+      data: { fileId },
+      roomId: this.roomId
+    });
+    
+    if (this.dataChannel?.readyState === 'open') {
+      try {
+        this.dataChannel.send(JSON.stringify(acceptanceMessage));
+      } catch (e) {
+        console.error('Failed to send acceptance via data channel:', e);
+      }
+    }
+  }
+
+  private handleFileTransferAccepted(fileId: string): void {
+    const file = this.pendingFiles.get(fileId);
+    if (!file) {
+      console.warn(`Pending file not found for ID: ${fileId}`);
+      return;
+    }
+
+    // Use adaptive chunk size if available
+    const effectiveChunkSize = Math.round(this.config.chunkSize);
+    const totalChunks = Math.ceil(file.size / effectiveChunkSize);
+    
+    console.log(`[${fileId}] Starting transfer: ${file.name} (${totalChunks} chunks, ${Math.round(effectiveChunkSize / 1024)}KB per chunk)`);
+    
+    // Start sending with a small delay to ensure UI responsiveness
+    setTimeout(() => {
+      this.startFileSending(file, fileId, effectiveChunkSize, totalChunks);
+    }, 100);
+    
+    this.pendingFiles.delete(fileId);
+  }
+
+  private async handleBinaryChunk(data: ArrayBuffer): Promise<void> {
+    // Parse chunk header
     if (data.byteLength < 12) {
       console.error('Received malformed binary chunk: too short for header.');
       return;
@@ -635,62 +730,117 @@ export class WebRTCService {
       return;
     }
 
-    const chunkData = data.slice(12, 12 + payloadSize);
-
     // Find fileId by hash
-    let fileId: string | undefined;
-    for (const [id] of this.fileTransfers.entries()) {
-      if (this.simpleHash(id) === fileIdHash) {
-        fileId = id;
-        break;
-      }
-    }
-
+    const fileId = this.findFileIdByHash(fileIdHash);
     if (!fileId) {
       console.warn(`Received chunk for unknown file hash: ${fileIdHash}`);
       return;
     }
 
-    const fileTransferState = this.fileTransfers.get(fileId);
-    if (!fileTransferState || 
-        fileTransferState.status === FileTransferStatus.Cancelled || 
-        fileTransferState.status === FileTransferStatus.Completed || 
-        fileTransferState.status === FileTransferStatus.Failed) {
-      console.warn(`Received chunk for file ${fileId} with status ${fileTransferState?.status}`);
+    // Early validation checks
+    if (!this.isValidChunk(fileId, chunkIndex, totalChunks)) {
       return;
     }
 
+    // Decrypt if needed
+    let chunkData = data.slice(12, 12 + payloadSize);
+
+    // Get file state
+    const fileTransferState = this.fileTransfers.get(fileId);
+    const chunks = this.receivedChunks.get(fileId);
+    if (!fileTransferState || !chunks) {
+      console.error(`Missing state for file ${fileId}`);
+      return;
+    }
+
+    // Write to stream if available
+    await this.writeChunkToStream(fileId, chunkIndex, chunkData);
+
+    // Store chunk in memory
+    if (chunks[chunkIndex] === undefined) {
+      chunks[chunkIndex] = chunkData;
+      fileTransferState.receivedBytes += chunkData.byteLength;
+    } else {
+      console.warn(`Duplicate chunk received for ${fileId}, index ${chunkIndex}`);
+    }
+
+    // Send acknowledgment
+    this.sendChunkAck(fileId, chunkIndex);
+
+    // Update progress
+    const progress = Math.min(99.5, (fileTransferState.receivedBytes / fileTransferState.size) * 100);
+    this.safeCallback('onProgressUpdate', progress, fileId);
+
+    // Check if all chunks received
+    const receivedCount = chunks.filter(c => c !== undefined).length;
+    if (receivedCount === totalChunks) {
+      console.log('All binary chunks received, assembling file...');
+      this.assembleFile(fileId).catch(error => {
+        console.error('Error in assembleFile:', error);
+        this.safeCallback('onTransferError', fileId, `File assembly failed: ${error instanceof Error ? error.message : 'unknown error'}`);
+        this.cleanupTransferState(fileId, FileTransferStatus.Failed);
+      });
+    }
+  }
+
+  // Helper methods for cleaner code
+  private findFileIdByHash(hash: number): string | undefined {
+    for (const [id] of this.fileTransfers.entries()) {
+      if (this.simpleHash(id) === hash) {
+        return id;
+      }
+    }
+    return undefined;
+  }
+
+  private isValidChunk(fileId: string, chunkIndex: number, totalChunks: number): boolean {
+    const fileTransferState = this.fileTransfers.get(fileId);
+    if (!fileTransferState) {
+      return false;
+    }
+
+    // Check transfer status
+    const status = fileTransferState.status as FileTransferStatus;
+    if (status === FileTransferStatus.Cancelled || 
+        status === FileTransferStatus.Completed || 
+        status === FileTransferStatus.Failed) {
+      return false;
+    }
+
+    // Validate chunk index
     const chunks = this.receivedChunks.get(fileId);
     if (!chunks) {
-      console.error('Missing chunk array for fileId:', fileId);
       this.safeCallback('onTransferError', fileId, 'Internal error: Missing chunk array.');
       this.cleanupTransferState(fileId);
-      return;
+      return false;
     }
 
     if (chunkIndex < 0 || chunkIndex >= totalChunks || chunkIndex >= chunks.length) {
       console.error(`Invalid chunk index ${chunkIndex} for file ${fileId}`);
       this.safeCallback('onTransferError', fileId, `Invalid chunk index ${chunkIndex}.`);
+      return false;
+    }
+
+    return true;
+  }
+
+  private async writeChunkToStream(fileId: string, chunkIndex: number, chunkData: ArrayBuffer): Promise<void> {
+    const fileStream = this.fileStreams.get(fileId);
+    if (!fileStream || typeof fileStream.write !== 'function') {
       return;
     }
 
-    if (chunks[chunkIndex] !== undefined) {
-      console.warn(`Duplicate chunk received for ${fileId}, index ${chunkIndex}`);
-    } else {
-      chunks[chunkIndex] = chunkData;
-      fileTransferState.receivedBytes += chunkData.byteLength;
-    }
-    
-    this.sendChunkAck(fileId, chunkIndex);
-
-    const receivedCount = chunks.filter(c => c !== undefined).length;
-    const progress = Math.min(99.5, (fileTransferState.receivedBytes / fileTransferState.size) * 100);
-
-    this.safeCallback('onProgressUpdate', progress, fileId);
-
-    if (receivedCount === totalChunks) {
-      console.log('All binary chunks received, assembling file...');
-      this.assembleFile(fileId);
+    try {
+      let currentPosition = this.streamPositions.get(fileId) || 0;
+      await fileStream.write({
+        type: 'write',
+        position: currentPosition,
+        data: chunkData
+      });
+      this.streamPositions.set(fileId, currentPosition + chunkData.byteLength);
+    } catch (e) {
+      console.error("Stream write failed for chunk", chunkIndex, e);
+      // Don't fail the transfer - chunk is still in memory
     }
   }
 
@@ -721,13 +871,22 @@ export class WebRTCService {
     console.log('File transfer complete signal received:', data.fileId);
     const fileState = this.fileTransfers.get(data.fileId);
     if (fileState && fileState.status === FileTransferStatus.InProgress) {
-      setTimeout(() => this.assembleFile(data.fileId), 100);
+      // Use async assembly
+      setTimeout(() => {
+        this.assembleFile(data.fileId).catch(error => {
+          console.error('Error in assembleFile:', error);
+          this.safeCallback('onTransferError', data.fileId, `File assembly failed: ${error instanceof Error ? error.message : 'unknown error'}`);
+          this.cleanupTransferState(data.fileId, FileTransferStatus.Failed);
+        });
+      }, 100);
     }
   }
 
-  private assembleFile(fileId: string): void {
+  private async assembleFile(fileId: string): Promise<void> {
+    
     const chunks = this.receivedChunks.get(fileId);
     const fileInfo = this.fileTransfers.get(fileId);
+    const fileStream = this.fileStreams.get(fileId);
 
     if (!chunks || !fileInfo) {
       console.error('Cannot assemble file, missing data for fileId:', fileId);
@@ -736,48 +895,149 @@ export class WebRTCService {
       return;
     }
 
-    const receivedCount = chunks.filter(c => c !== undefined).length;
-    if (receivedCount !== fileInfo.chunks) {
-      const missingIndexes = chunks.map((c, i) => c === undefined ? i : -1).filter(i => i !== -1);
-      console.error(`Missing ${fileInfo.chunks - receivedCount} chunks for ${fileId}. Missing: ${missingIndexes.join(',')}`);
-      fileInfo.status = FileTransferStatus.Failed;
-      this.safeCallback('onTransferError', fileId, `File assembly failed: Missing ${fileInfo.chunks - receivedCount} chunks.`);
-      this.cleanupTransferState(fileId);
+    // Don't assemble if transfer has failed (e.g., decryption error)
+    const fileStatus = fileInfo.status as FileTransferStatus;
+    if (fileStatus === FileTransferStatus.Failed || fileStatus === FileTransferStatus.Cancelled) {
+      console.error(`Cannot assemble file ${fileId}: Transfer has failed`);
+      this.safeCallback('onTransferError', fileId, 'File assembly aborted: Transfer failed (likely incorrect password).');
+      this.cleanupTransferState(fileId, FileTransferStatus.Failed);
       return;
     }
 
-    const totalSize = chunks.reduce((size, chunk) => size + (chunk?.byteLength || 0), 0);
-    
-    if (Math.abs(totalSize - fileInfo.size) > 1024) {
-      console.warn(`Size mismatch for ${fileId}: expected ${fileInfo.size}, got ${totalSize}`);
-    }
-
-    const combinedBuffer = new ArrayBuffer(totalSize);
-    const combinedView = new Uint8Array(combinedBuffer);
-
-    let offset = 0;
-    for (const chunk of chunks) {
-      if (chunk) {
-        combinedView.set(new Uint8Array(chunk), offset);
-        offset += chunk.byteLength;
+    // Check for missing chunks
+    const missingChunks: number[] = [];
+    for (let i = 0; i < fileInfo.chunks; i++) {
+      if (chunks[i] === undefined) {
+        missingChunks.push(i);
       }
     }
 
-    console.log('File assembled successfully:', fileInfo.name);
-    
-    fileInfo.status = FileTransferStatus.Completed;
-    this.safeCallback('onProgressUpdate', 100, fileId);
-    this.safeCallback('onFileReceived', {
-      name: fileInfo.name,
-      size: fileInfo.size,
-      data: combinedBuffer
-    });
+    if (missingChunks.length > 0) {
+      console.error(`Missing ${missingChunks.length} chunks for file ${fileId}:`, missingChunks);
+      this.safeCallback('onTransferError', fileId, `File incomplete: ${missingChunks.length} chunks missing.`);
+      this.cleanupTransferState(fileId, FileTransferStatus.Failed);
+      return;
+    }
 
-    this.cleanupTransferState(fileId);
+    try {
+      // If we have a file stream (File System Access API), write chunks in order
+      if (fileStream && typeof fileStream.write === 'function') {
+        console.log(`Assembling file ${fileId} to disk stream...`);
+        
+        // Write chunks in order to the stream
+        for (let i = 0; i < chunks.length; i++) {
+          const chunk = chunks[i];
+          if (chunk) {
+            await fileStream.write({ type: 'write', data: chunk });
+          }
+        }
+        
+        // Close the stream
+        await fileStream.close();
+        console.log(`File ${fileId} successfully written to disk`);
+        
+        // Clear chunks from memory immediately to free RAM
+        this.receivedChunks.delete(fileId);
+        this.fileStreams.delete(fileId);
+        this.streamPositions.delete(fileId);
+        
+        // Update status
+        const transferState = this.fileTransfers.get(fileId);
+        if (transferState) {
+          transferState.status = FileTransferStatus.Completed;
+        }
+        
+        // Calculate transfer time
+        const transferStartTime = this.transferStartTimes.get(fileId) || Date.now();
+        const transferTime = Date.now() - transferStartTime;
+        
+        // Track file transfer completion
+        trackFileTransferComplete({
+          fileName: fileInfo.name,
+          fileSize: fileInfo.size,
+          transferTime: transferTime,
+          success: true
+        });
+        
+        this.safeCallback('onProgressUpdate', 100, fileId);
+        this.safeCallback('onFileReceived', {
+          name: fileInfo.name,
+          size: fileInfo.size,
+          data: new Blob() // Empty blob indicates streamed to disk
+        });
+        
+        this.cleanupTransferState(fileId);
+        return;
+      }
+
+      // Fallback: Assemble in memory (for browsers without File System Access API)
+      console.log(`Assembling file ${fileId} in memory...`);
+      
+      // Create a single Blob from all chunks
+      const blobParts: BlobPart[] = chunks.filter(c => c !== undefined) as ArrayBuffer[];
+      const assembledBlob = new Blob(blobParts, { type: fileInfo.type || 'application/octet-stream' });
+      
+      // Verify size
+      if (assembledBlob.size !== fileInfo.size) {
+        console.warn(`File size mismatch: expected ${fileInfo.size}, got ${assembledBlob.size}`);
+        // Still proceed, but log warning
+      }
+
+      // Clear chunks from memory immediately
+      this.receivedChunks.delete(fileId);
+      
+      // Update status
+      const transferState = this.fileTransfers.get(fileId);
+      if (transferState) {
+        transferState.status = FileTransferStatus.Completed;
+      }
+
+      // Calculate transfer time
+      const transferStartTime = this.transferStartTimes.get(fileId) || Date.now();
+      const transferTime = Date.now() - transferStartTime;
+      
+      // Track file transfer completion
+      trackFileTransferComplete({
+        fileName: fileInfo.name,
+        fileSize: fileInfo.size,
+        transferTime: transferTime,
+        success: true
+      });
+      
+      this.safeCallback('onProgressUpdate', 100, fileId);
+      this.safeCallback('onFileReceived', {
+        name: fileInfo.name,
+        size: fileInfo.size,
+        data: assembledBlob
+      });
+
+      this.cleanupTransferState(fileId);
+      
+    } catch (error) {
+      console.error(`Error assembling file ${fileId}:`, error);
+      
+      // Track failed transfer
+      const transferStartTime = this.transferStartTimes.get(fileId) || Date.now();
+      const transferTime = Date.now() - transferStartTime;
+      const fileInfo = this.fileTransfers.get(fileId);
+      
+      if (fileInfo) {
+        trackFileTransferComplete({
+          fileName: fileInfo.name,
+          fileSize: fileInfo.size,
+          transferTime: transferTime,
+          success: false
+        });
+      }
+      
+      trackError('file_assembly_failed', error instanceof Error ? error.message : 'unknown error', 'assembleFile');
+      this.safeCallback('onTransferError', fileId, `File assembly failed: ${error instanceof Error ? error.message : 'unknown error'}`);
+      this.cleanupTransferState(fileId, FileTransferStatus.Failed);
+    }
   }
 
   // Sender File Transfer Logic
-  sendFile(file: File): string {
+  async sendFile(file: File): Promise<string> {
     if (!this.dataChannelReady || !this.dataChannel || this.dataChannel.readyState !== 'open') {
       console.error('Data channel not ready for file transfer');
       this.safeCallback('onTransferError', 'N/A', 'Data channel not open. Cannot send file.');
@@ -792,8 +1052,7 @@ export class WebRTCService {
     }
 
     const fileId = this.generateFileId();
-    const chunkSize = this.config.chunkSize;
-    const totalChunks = Math.ceil(file.size / chunkSize);
+    const totalChunks = Math.ceil(file.size / this.config.chunkSize);
 
     console.log(`Starting file transfer: ${file.name} (${file.size} bytes, ${totalChunks} chunks) with ID: ${fileId}`);
 
@@ -811,17 +1070,33 @@ export class WebRTCService {
       receivedBytes: 0 
     });
     this.sentChunksQueue.set(fileId, []);
+    this.transferStartTimes.set(fileId, Date.now()); // Track transfer start time
+    
+    // Store file for later sending upon acceptance
+    this.pendingFiles.set(fileId, file);
 
     try {
       this.dataChannel.send(JSON.stringify({ type: 'file-info', data: fileInfo }));
+      console.log('File info sent, waiting for acceptance...');
+      
+      // Track file send initiation
+      trackFileSend({
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type || 'unknown',
+        chunkCount: totalChunks
+      });
     } catch (e) {
       console.error('Failed to send file-info:', e);
+      trackError('file_info_send_failed', e instanceof Error ? e.message : 'Unknown error', 'sendFile');
       this.safeCallback('onTransferError', fileId, 'Failed to send file info to receiver.');
       this.cleanupTransferState(fileId, FileTransferStatus.Failed);
+      this.pendingFiles.delete(fileId);
       return '';
     }
 
-    this.startFileSending(file, fileId, chunkSize, totalChunks);
+    // DO NOT start sending yet. Wait for 'file-transfer-accepted'.
+    
     return fileId;
   }
 
@@ -836,23 +1111,24 @@ export class WebRTCService {
     let sentBytes = 0;
 
     const sendNextChunk = async (): Promise<void> => {
-      const fileState = this.fileTransfers.get(fileId);
-      if (!fileState || fileState.status === FileTransferStatus.Cancelled) {
-        console.log(`File transfer ${fileId} cancelled, stopping transmission.`);
-        return;
-      }
-
-      if (chunkIndex >= totalChunks) {
-        console.log(`All chunks for ${fileId} enqueued. Monitoring ACKs.`);
-        this.monitorChunkAcks(fileId, file.size);
-        return;
-      }
-
-      if (!this.dataChannel || this.dataChannel.readyState !== 'open') {
-        console.error('Data channel closed during chunk sending');
-        this.safeCallback('onTransferError', fileId, 'Data channel closed during transfer.');
-        this.cleanupTransferState(fileId, FileTransferStatus.Failed);
-        return;
+      // 2. CHECK BUFFERED AMOUNT (Backpressure)
+      // The threshold should be low enough to prevent memory spikes but high enough for throughput
+      // 64KB * 4 = 256KB buffer limit
+      if (this.dataChannel && this.dataChannel.bufferedAmount > this.config.chunkSize * 4) {
+        // console.log('Backpressure active. Waiting for buffer to drain...');
+        // Wait for 'bufferedamountlow' event
+        await new Promise<void>(resolve => {
+          if (this.dataChannel) {
+            this.dataChannel.onbufferedamountlow = () => {
+              if (this.dataChannel) {
+                this.dataChannel.onbufferedamountlow = null;
+              }
+              resolve();
+            };
+          } else {
+            resolve();
+          }
+        });
       }
 
       const start = chunkIndex * chunkSize;
@@ -863,6 +1139,7 @@ export class WebRTCService {
         const buffer = await this.readFileSlice(slice);
         const payload = this.createChunkPayload(fileId, chunkIndex, totalChunks, buffer);
 
+        // Queue for retransmission if needed
         this.sentChunksQueue.get(fileId)?.push({ 
           data: payload, 
           sentTime: Date.now(), 
@@ -870,31 +1147,36 @@ export class WebRTCService {
           chunkIndex 
         });
 
-        this.dataChannel.send(payload);
+        if (this.dataChannel) {
+          this.dataChannel.send(payload);
+        }
         sentBytes += buffer.byteLength;
         chunkIndex++;
 
-        const progress = (sentBytes / file.size) * 100;
-        this.safeCallback('onProgressUpdate', progress, fileId);
-
-        // Flow control
-        if (this.dataChannel.bufferedAmount < this.config.chunkSize * 2) {
-          setTimeout(sendNextChunk, 0);
-        } else {
-          this.dataChannel.bufferedAmountLowThreshold = this.config.chunkSize * 2;
-          this.dataChannel.onbufferedamountlow = () => {
-            this.dataChannel!.onbufferedamountlow = null;
-            setTimeout(sendNextChunk, 0);
-          };
+        // Less frequent progress updates for performance
+        if (chunkIndex % 10 === 0 || chunkIndex === totalChunks) {
+             const progress = (sentBytes / file.size) * 100;
+             this.safeCallback('onProgressUpdate', progress, fileId);
         }
+
+        // Yield to event loop every few chunks
+        if (chunkIndex % 5 === 0) {
+            await new Promise(r => setTimeout(r, 0));
+        }
+
       } catch (error) {
         console.error(`Error sending chunk ${chunkIndex}:`, error);
         this.safeCallback('onTransferError', fileId, `Failed to send chunk ${chunkIndex}.`);
         this.cleanupTransferState(fileId, FileTransferStatus.Failed);
+        return;
       }
     };
-
-    await sendNextChunk();
+    
+    // Start loop
+    while(chunkIndex < totalChunks && 
+          this.fileTransfers.get(fileId)?.status !== FileTransferStatus.Cancelled) {
+             await sendNextChunk();
+    }
   }
 
   private readFileSlice(slice: Blob): Promise<ArrayBuffer> {
@@ -1061,6 +1343,10 @@ export class WebRTCService {
     this.receivedChunks.delete(fileId);
     this.fileTransfers.delete(fileId);
     this.sentChunksQueue.delete(fileId);
+    this.fileStreams.delete(fileId);
+    this.streamPositions.delete(fileId);
+    // Removed decryption cleanup
+    this.transferStartTimes.delete(fileId); // Clear transfer start time
     
     if (this.chunkMonitorIntervals.has(fileId)) {
       clearInterval(this.chunkMonitorIntervals.get(fileId)!);

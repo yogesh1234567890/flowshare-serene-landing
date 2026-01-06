@@ -23,7 +23,9 @@ export const useFileReceive = () => {
     isWebSocketConnected, 
     fileTransferProgress, 
     fileInfoMap,
-    initializeAsReceiver 
+    initializeAsReceiver,
+    incomingFile,
+    acceptIncomingFile
   } = useWebRTC();
 
   // Fix connection status mapping - use isDataChannelOpen for true connected state
@@ -68,12 +70,12 @@ export const useFileReceive = () => {
 
   // Handle file transfer progress updates from WebRTC with debounced updates
   useEffect(() => {
-    if (fileTransferProgress.size > 0) {
-      // Batch updates to prevent excessive re-renders
-      setDownloadFiles(prev => {
-        const newFiles = [...prev];
-        let hasChanges = false;
-        
+    setDownloadFiles(prev => {
+      const newFiles = [...prev];
+      let hasChanges = false;
+      
+      // Update files from progress map
+      if (fileTransferProgress.size > 0) {
         fileTransferProgress.forEach((progress, fileId) => {
           const existingIndex = newFiles.findIndex(f => f.id === fileId);
           const fileInfo = fileInfoMap.get(fileId);
@@ -115,15 +117,16 @@ export const useFileReceive = () => {
                 ...currentFile,
                 name: fileInfo?.name || currentFile.name,
                 size: fileInfo?.size || currentFile.size,
-                progress: roundedProgress,
+                progress: Math.min(100, roundedProgress), // Cap at 100
                 speed: progress < 100 ? calculateSpeed(progress) : '0 MB/s',
                 eta: progress >= 100 ? 'Complete' : calculateETA(progress),
                 status: progress >= 100 ? 'complete' : progress > 0 ? 'downloading' : 'connecting'
               };
+              
               hasChanges = true;
               
               // Show completion toast (only once)
-              if (progress >= 100 && currentFile.progress < 100) {
+              if (progress >= 100 && currentFile.status !== 'complete') {
                 toast({
                   title: "✅ File Received",
                   description: `${fileInfo?.name || currentFile.name} downloaded successfully`,
@@ -132,10 +135,28 @@ export const useFileReceive = () => {
             }
           }
         });
-        
-        return hasChanges ? newFiles : prev;
+      }
+      
+      // Keep completed files visible even if they're removed from progress map
+      newFiles.forEach((file, index) => {
+        if (file.status === 'complete' && !fileTransferProgress.has(file.id)) {
+          // File is complete but removed from progress - keep it visible
+          // Ensure it's marked as complete with 100% progress
+          if (newFiles[index].progress < 100 || newFiles[index].status !== 'complete') {
+            newFiles[index] = {
+              ...file,
+              progress: 100,
+              status: 'complete',
+              speed: '0 MB/s',
+              eta: 'Complete'
+            };
+            hasChanges = true;
+          }
+        }
       });
-    }
+      
+      return hasChanges ? newFiles : prev;
+    });
   }, [fileTransferProgress, fileInfoMap]);
 
   const calculateSpeed = (progress: number): string => {
@@ -168,6 +189,8 @@ export const useFileReceive = () => {
     connectionState,
     downloadFiles: downloadFiles.length > 0 ? downloadFiles : null,
     handleConnect,
-    isWebSocketConnected
+    isWebSocketConnected,
+    incomingFile,
+    acceptIncomingFile
   };
 };
