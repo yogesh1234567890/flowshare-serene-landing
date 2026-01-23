@@ -45,10 +45,7 @@ const FileShare = () => {
     trackCodeGenerated('sender');
     trackButtonClick('refresh_code', 'FileShare');
 
-    toast({
-      title: "🔄 New Code Generated",
-      description: `Connection code refreshed: ${newCode}`,
-    });
+    // Code is visible in UI - no toast needed
   };
 
   const {
@@ -134,10 +131,7 @@ const FileShare = () => {
     // Track file upload
     trackFileUpload(uploadedFiles.length);
 
-    toast({
-      title: "📁 Files Ready",
-      description: `${uploadedFiles.length} file(s) ready to send`,
-    });
+    // Files are visible in file list - no toast needed
   };
 
 
@@ -163,19 +157,15 @@ const FileShare = () => {
     // Validation
     if (!isDataChannelOpen || files.length === 0) {
       toast({
-        title: "❌ Cannot Send Files",
-        description: "Data channel not ready or no files selected",
+        title: "Cannot Send Files",
+        description: "Please wait for receiver to connect",
         variant: "destructive"
       });
       return;
     }
 
     if (!receiverConnected) {
-      toast({
-        title: "⏳ Waiting for Receiver",
-        description: "Please wait for the receiver to connect",
-        variant: "destructive"
-      });
+      // Waiting status shown in connection status display
       return;
     }
 
@@ -203,11 +193,7 @@ const FileShare = () => {
               ? { ...f, status: 'error' as const }
               : f
           ));
-          toast({
-            title: "❌ Failed to Send",
-            description: `Could not send ${fileData.name}`,
-            variant: "destructive"
-          });
+          // Error shown in file list status
         }
       } catch (e) {
         console.error("Error sending file:", e);
@@ -216,11 +202,7 @@ const FileShare = () => {
             ? { ...f, status: 'error' as const }
             : f
         ));
-        toast({
-          title: "❌ Send Error",
-          description: `Failed to send ${fileData.name}: ${e instanceof Error ? e.message : 'Unknown error'}`,
-          variant: "destructive"
-        });
+        // Error shown in file list status
       }
 
       // Small delay between files
@@ -232,10 +214,7 @@ const FileShare = () => {
     // Record transfer for monetization tracking
     monetizationService.recordTransfer(totalSize, files.length);
 
-    toast({
-      title: "📤 Files Queued",
-      description: `Started transferring ${files.length} file(s)`,
-    });
+    // Transfer progress shown in file list - no toast needed
   };
 
   const removeFile = (fileId: string) => {
@@ -244,7 +223,7 @@ const FileShare = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-2 sm:p-4">
-      <div className="max-w-5xl mx-auto pt-16">
+      <div className="max-w-7xl mx-auto pt-16 w-full">
         {/* ... Header ... */}
         <header className="flex items-center justify-between mb-4 sm:mb-6 lg:mb-8 gap-2">
           <Link
@@ -278,8 +257,8 @@ const FileShare = () => {
         {/* Top Section: Connection Center */}
         <div className="mb-6 sm:mb-8">
           <section aria-label="Connection Settings" className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 sm:p-6">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-              <div className="flex-1 w-full md:w-auto">
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 lg:gap-8">
+              <div className="flex-1 w-full lg:w-auto min-w-0">
                 <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
                   <Shield className="w-5 h-5 text-blue-500" />
                   Connection Center
@@ -287,7 +266,7 @@ const FileShare = () => {
                 <ConnectionCode code={connectionCode} onRefresh={refreshConnectionCode} />
               </div>
 
-              <div className="flex-1 w-full md:w-auto min-w-0 md:min-w-[300px]">
+              <div className="flex-1 w-full lg:w-auto min-w-0 lg:min-w-[400px]">
                 <ConnectionStatusDisplay
                   connectionState={connectionState}
                   isDataChannelOpen={isDataChannelOpen}
@@ -300,23 +279,17 @@ const FileShare = () => {
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid lg:grid-cols-2 gap-6 sm:gap-8">
+        <div className="grid lg:grid-cols-2 xl:grid-cols-2 gap-6 sm:gap-8">
           {/* Left Column: Drop Zone */}
-          <div>
+          <div className="h-full">
             <section aria-label="File Upload Area" className="h-full">
               <FileDropZone onFilesAdded={handleFileUpload} />
             </section>
-            
-            {/* Ad Banner for Free Users */}
-            {monetizationService.shouldShowAds() && (
-              <AdBanner format="horizontal" className="mt-6 sm:mt-8" />
-            )}
-            
           </div>
 
           {/* Right Column: File List & Options */}
-          <div>
-            <section aria-label="Selected Files" className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 sm:p-6 min-h-[300px] sm:min-h-[400px]">
+          <div className="h-full">
+            <section aria-label="Selected Files" className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6 h-full flex flex-col">
               <FileList
                 files={files}
                 onRemove={removeFile}

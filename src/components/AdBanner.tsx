@@ -1,88 +1,37 @@
-import { useEffect, useRef } from 'react';
 import { monetizationService } from '@/services/monetizationService';
 
 interface AdBannerProps {
-  slot?: string;
   format?: 'auto' | 'rectangle' | 'vertical' | 'horizontal';
-  style?: React.CSSProperties;
   className?: string;
 }
 
 /**
- * Google AdSense Banner Component
- * Only displays ads for free tier users
+ * Ad Banner Component
+ * Placeholder for future ad integration - only shows for free tier users
  */
 export const AdBanner = ({ 
-  slot = '1234567890', // Replace with your AdSense ad slot ID
-  format = 'auto',
-  style,
+  format = 'horizontal',
   className = ''
 }: AdBannerProps) => {
-  const adRef = useRef<HTMLDivElement>(null);
   const shouldShowAds = monetizationService.shouldShowAds();
-
-  useEffect(() => {
-    if (!shouldShowAds || !adRef.current) return;
-
-    // Load Google AdSense script if not already loaded
-    if (!window.adsbygoogle) {
-      const script = document.createElement('script');
-      script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXX'; // Replace with your AdSense client ID
-      script.async = true;
-      script.crossOrigin = 'anonymous';
-      document.head.appendChild(script);
-    }
-
-    // Initialize ad
-    try {
-      if (window.adsbygoogle && adRef.current) {
-        (window.adsbygoogle = window.adsbygoogle || []).push({});
-      }
-    } catch (e) {
-      console.error('AdSense error:', e);
-    }
-  }, [shouldShowAds]);
 
   if (!shouldShowAds) {
     return null;
   }
 
+  // Placeholder ad banner - can be replaced with actual ad service later
   return (
     <div 
-      ref={adRef}
-      className={`ad-container ${className}`}
+      className={`bg-slate-100 border border-slate-200 rounded-lg flex items-center justify-center ${className}`}
       style={{
         minHeight: format === 'vertical' ? '250px' : format === 'horizontal' ? '90px' : 'auto',
-        width: '100%',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        margin: '1rem 0',
-        ...style
+        width: '100%'
       }}
     >
-      <ins
-        className="adsbygoogle"
-        style={{
-          display: 'block',
-          width: '100%',
-          maxWidth: format === 'vertical' ? '300px' : '100%'
-        }}
-        data-ad-client="ca-pub-XXXXXXXXXX" // Replace with your AdSense client ID
-        data-ad-slot={slot}
-        data-ad-format={format}
-        data-full-width-responsive="true"
-      />
+      <p className="text-xs text-slate-400">Advertisement</p>
     </div>
   );
 };
-
-// TypeScript declaration for AdSense
-declare global {
-  interface Window {
-    adsbygoogle: any[];
-  }
-}
 
 export default AdBanner;
 

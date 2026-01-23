@@ -6,7 +6,6 @@ import Index from "./pages/Index";
 import FileShare from "./pages/FileShare";
 import FileReceive from "./pages/FileReceive";
 import Security from "./pages/Security";
-// import Upgrade from "./pages/Upgrade";
 import NotFound from "./pages/NotFound";
 import { initGTM, trackPageView } from "@/utils/gtm";
 
@@ -38,7 +37,6 @@ const App = () => {
           <Route path="/share" element={<FileShare />} />
           <Route path="/receive" element={<FileReceive />} />
           <Route path="/security" element={<Security />} />
-          {/* <Route path="/upgrade" element={<Upgrade />} /> */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

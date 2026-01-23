@@ -26,8 +26,8 @@ RUN npm run build
 # Stage 2: Serve the application with Nginx
 FROM nginx:alpine
 
-# Install curl for health checks
-RUN apk add --no-cache curl
+# Install wget for health checks (consistent with docker-compose)
+RUN apk add --no-cache wget
 
 # Copy the build output to Nginx's html directory
 COPY --from=build /app/dist /usr/share/nginx/html
@@ -44,7 +44,7 @@ EXPOSE 80
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost/ || exit 1
+  CMD wget --quiet --tries=1 --spider http://localhost/ || exit 1
 
 # Start Nginx
 CMD ["nginx", "-g", "daemon off;"]

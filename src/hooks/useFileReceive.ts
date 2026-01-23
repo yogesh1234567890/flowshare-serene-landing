@@ -45,24 +45,18 @@ export const useFileReceive = () => {
     // Initialize WebRTC connection as receiver with enhanced file info handling
     initializeAsReceiver(connectionCode);
     
-    toast({
-      title: "🔄 Connecting...",
-      description: `Joining room: ${connectionCode}`,
-    });
+    // Connecting status shown in ConnectionStatusDisplay
   }, [initializeAsReceiver]);
 
   // Monitor connection state changes
   useEffect(() => {
     if (connectionState === 'connected' && isDataChannelOpen) {
       soundEffects.playConnectSound();
-      toast({
-        title: "✅ Ready to Receive",
-        description: "Connected and ready for file transfers",
-      });
+      // Ready status shown in ConnectionStatusDisplay
     } else if (connectionState === 'failed' || connectionState === 'closed') {
       toast({
-        title: "❌ Connection Failed",
-        description: "Could not connect to sender",
+        title: "Connection Failed",
+        description: "Could not connect to sender. Please check the connection code.",
         variant: "destructive"
       });
     }
@@ -98,10 +92,7 @@ export const useFileReceive = () => {
             
             // Show toast for new file transfer (only once)
             if (progress > 0 && progress < 100) {
-              toast({
-                title: "📥 Receiving File",
-                description: fileInfo?.name ? `Receiving ${fileInfo.name}` : "File transfer started",
-              });
+              // Receiving status shown in download progress UI
             }
           } else {
             // Update existing file only if there's a significant change (>= 2% or status change)
@@ -127,10 +118,7 @@ export const useFileReceive = () => {
               
               // Show completion toast (only once)
               if (progress >= 100 && currentFile.status !== 'complete') {
-                toast({
-                  title: "✅ File Received",
-                  description: `${fileInfo?.name || currentFile.name} downloaded successfully`,
-                });
+                // File received - shown in download progress UI
               }
             }
           }

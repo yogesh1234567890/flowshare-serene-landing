@@ -42,7 +42,7 @@ const FileReceive = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-2 sm:p-4">
-      <div className="max-w-2xl mx-auto pt-16">
+      <div className="max-w-7xl mx-auto pt-16 w-full">
         <div className="flex items-center justify-between mb-4 sm:mb-6 lg:mb-8 gap-2">
           <Link
             to="/"
@@ -65,10 +65,10 @@ const FileReceive = () => {
           <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-r from-green-500 to-teal-500 rounded-3xl mb-4 sm:mb-6 shadow-lg">
             <Download className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
           </div>
-          <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold text-foreground mb-2 sm:mb-4 animate-fade-in">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-2 sm:mb-4 animate-fade-in">
             Receive Files
           </h1>
-          <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto animate-slide-up">
+          <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-4xl mx-auto animate-slide-up">
             Enter the connection code from the sender to receive files securely via peer-to-peer technology
           </p>
         </div>
@@ -87,7 +87,7 @@ const FileReceive = () => {
             </div>
 
             {connectionStatus !== 'connected' && (
-              <div className="w-full max-w-md mx-auto">
+              <div className="w-full max-w-lg mx-auto">
                 <ConnectionForm
                   onConnect={handleConnect}
                   connectionStatus={connectionStatus}
@@ -98,7 +98,7 @@ const FileReceive = () => {
 
           {/* Downloads Section */}
           {downloadFiles && downloadFiles.length > 0 && (
-            <div className="space-y-4 sm:space-y-6 animate-fade-in">
+            <div className="space-y-4 sm:space-y-6 animate-fade-in max-w-4xl mx-auto w-full">
               <h2 className="text-lg sm:text-xl font-semibold text-slate-800 flex items-center gap-2">
                 <Download className="w-5 h-5 text-blue-500 flex-shrink-0" />
                 Downloads

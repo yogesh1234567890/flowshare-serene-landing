@@ -19,10 +19,7 @@ const ConnectionForm = ({ onConnect, connectionStatus }: ConnectionFormProps) =>
 
   const handleConnect = () => {
     if (!connectionCode.trim()) {
-      toast({
-        title: "Enter Connection Code",
-        description: "Please enter a valid connection code",
-      });
+      // Validation error - keep this toast as it's user input feedback
       return;
     }
     

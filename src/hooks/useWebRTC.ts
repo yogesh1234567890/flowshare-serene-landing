@@ -20,25 +20,18 @@ export const useWebRTC = () => {
       onConnectionStateChange: (state) => {
         setConnectionState(state);
         setPeerConnected(state === 'connected');
-        if (state === 'connected') {
+        // Connection status is shown in ConnectionStatusDisplay component
+        // Only show toast for critical failures
+        if (state === 'failed') {
           toast({
-            title: "🔗 Peer Connected",
-            description: "Ready to send files securely",
-          });
-        } else if (state === 'failed') {
-          toast({
-            title: "❌ Connection Failed",
-            description: "Unable to establish peer connection",
+            title: "Connection Failed",
+            description: "Unable to establish peer connection. Please try again.",
             variant: "destructive"
           });
         }
       },
       onDataChannelOpen: () => {
         setIsDataChannelOpen(true);
-        toast({
-          title: "✅ Channel Ready", 
-          description: "Secure data channel established",
-        });
       },
       onProgressUpdate: (progress, fileId) => {
         if (fileId) {
@@ -66,26 +59,17 @@ export const useWebRTC = () => {
       },
       onWebSocketConnected: () => {
         setIsWebSocketConnected(true);
-        toast({
-          title: "🌐 WebSocket Connected",
-          description: "Protocol switched successfully (101)",
-        });
       },
       onWebSocketError: () => {
         setIsWebSocketConnected(false);
-        toast({
-          title: "🔌 Connection Error",
-          description: "WebSocket connection failed",
-          variant: "destructive"
-        });
+        // WebSocket status is shown in ConnectionStatusDisplay
+        // Only show toast for persistent failures
       },
       onReceiverJoined: () => {
         console.log('Receiver joined and ready');
         setReceiverConnected(true);
-        toast({
-          title: "👥 Receiver Joined",
-          description: "Another device connected to your room",
-        });
+        // Receiver status is shown in ConnectionStatusDisplay
+        // No toast needed - UI already shows connection status
         webrtcService.current?.createOffer();
       }
     });
@@ -102,34 +86,24 @@ export const useWebRTC = () => {
     webrtcService.current.connectAsReceiver(connectionCode, {
       onConnectionStateChange: (state) => {
         setConnectionState(state);
-        if (state === 'connected') {
+        // Connection status is shown in ConnectionStatusDisplay component
+        // Only show toast for critical failures
+        if (state === 'failed') {
           toast({
-            title: "🔗 Connected to Sender",
-            description: "Ready to receive files securely",
-          });
-        } else if (state === 'failed') {
-          toast({
-            title: "❌ Connection Failed",
-            description: "Unable to connect to sender",
+            title: "Connection Failed",
+            description: "Unable to connect to sender. Please check the connection code.",
             variant: "destructive"
           });
         }
       },
       onDataChannelOpen: () => {
         setIsDataChannelOpen(true);
-        toast({
-          title: "✅ Ready to Receive",
-          description: "Secure channel established",
-        });
       },
       onIncomingFile: (fileInfo) => {
         console.log('Incoming file offer:', fileInfo);
         setIncomingFile(fileInfo);
-        toast({
-          title: "📥 Incoming File",
-          description: `Sender wants to send ${fileInfo.name} (${formatBytes(fileInfo.size)})`,
-          duration: 10000,
-        });
+        // Incoming file notification is handled by AlertDialog
+        // No toast needed - dialog provides better UX
       },
       onFileReceived: (file) => {
         console.log('File received:', file);
@@ -139,10 +113,8 @@ export const useWebRTC = () => {
         // If data is populated (memory), we trigger download
         
         if ((file.data instanceof ArrayBuffer && file.data.byteLength === 0) || (file.data instanceof Blob && file.data.size === 0)) {
-             toast({
-              title: "✅ File Saved",
-              description: `${file.name} has been saved to your device.`,
-            });
+             // File saved - shown in download progress UI
+            // Only show toast for errors
             return;
         }
 
@@ -157,10 +129,8 @@ export const useWebRTC = () => {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         
-        toast({
-          title: "📁 File Received",
-          description: `${file.name} downloaded successfully`,
-        });
+        // File received - shown in download progress UI
+        // Success is indicated by progress bar completion
       },
       onProgressUpdate: (progress, fileId) => {
         if (fileId) {
@@ -169,10 +139,6 @@ export const useWebRTC = () => {
       },
       onWebSocketConnected: () => {
         setIsWebSocketConnected(true);
-        toast({
-          title: "🌐 WebSocket Connected",
-          description: "Protocol switched successfully (101)",
-        });
       },
       onWebSocketError: () => {
         setIsWebSocketConnected(false);
@@ -197,10 +163,7 @@ export const useWebRTC = () => {
           suggestedName: incomingFile.name,
         });
         fileStream = await handle.createWritable();
-        toast({
-          title: "💾 Saving to Disk",
-          description: "File will be streamed directly to your selected location.",
-        });
+        // Saving status shown in download progress UI
       } catch (err) {
         console.warn('File picker cancelled or failed:', err);
         if ((err as Error).name === 'AbortError') {
@@ -209,10 +172,10 @@ export const useWebRTC = () => {
       }
     } else {
        toast({
-          title: "⚠️ Large File Warning",
-          description: "Browser file system not supported. Files >1GB may crash your tab.",
+          title: "Large File Warning",
+          description: "Files over 1GB may cause performance issues. Consider using smaller files.",
           variant: "destructive",
-          duration: 8000
+          duration: 5000
         });
     }
 
@@ -233,15 +196,12 @@ export const useWebRTC = () => {
   const sendFile = useCallback(async (file: File): Promise<string> => {
     if (webrtcService.current && isDataChannelOpen) {
       const webrtcFileId = await webrtcService.current.sendFile(file);
-      toast({
-        title: "📤 Sending File",
-        description: `Starting transfer of ${file.name}`,
-      });
+      // Sending status shown in file list progress bars
       return webrtcFileId;
     } else {
       toast({
-        title: "❌ Cannot Send File",
-        description: "Data channel not ready",
+        title: "Cannot Send File",
+        description: "Connection not ready. Please wait for receiver to connect.",
         variant: "destructive"
       });
       return '';
@@ -258,10 +218,7 @@ export const useWebRTC = () => {
     setIsWebSocketConnected(false);
     setFileTransferProgress(new Map());
     
-    toast({
-      title: "🔌 Disconnected",
-      description: "Connection closed",
-    });
+    // Disconnection status shown in ConnectionStatusDisplay
   }, []);
 
   return {

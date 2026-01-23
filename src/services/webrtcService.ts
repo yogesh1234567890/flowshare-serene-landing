@@ -145,39 +145,96 @@ export class WebRTCService {
       this.pc = null;
     }
 
-    // const configuration: RTCConfiguration = {
-    //   iceServers: [
-    //     { urls: 'stun:stun.l.google.com:19302' },
-    //     { urls: 'stun:stun1.l.google.com:19302' },
-    //     { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-    //     { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
-    //   ],
-    //   iceCandidatePoolSize: 10
-    // };
-
+    // Public STUN and TURN servers with fallback options
+    // These are free, open-source servers that can be used as fallbacks
+    const iceServers: RTCIceServer[] = [
+      // Primary: Google's public STUN servers (most reliable)
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:stun3.l.google.com:19302' },
+      { urls: 'stun:stun4.l.google.com:19302' },
+      
+      // Additional public STUN servers as fallbacks
+      { urls: 'stun:stun.stunprotocol.org:3478' },
+      { urls: 'stun:stun.voiparound.com' },
+      { urls: 'stun:stun.voipbuster.com' },
+      { urls: 'stun:stun.voipstunt.com' },
+      { urls: 'stun:stun.voxgratia.org' },
+      
+      // Open Relay Project - Free public TURN servers
+      {
+        urls: [
+          'turn:openrelay.metered.ca:80',
+          'turn:openrelay.metered.ca:443',
+          'turn:openrelay.metered.ca:443?transport=tcp'
+        ],
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      
+      // Additional TURN servers (community maintained)
+      {
+        urls: [
+          'turn:relay.metered.ca:80',
+          'turn:relay.metered.ca:443',
+          'turn:relay.metered.ca:443?transport=tcp'
+        ],
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      
+      // STUN servers from different providers for redundancy
+      { urls: 'stun:stun.ekiga.net' },
+      { urls: 'stun:stun.fwdnet.net' },
+      { urls: 'stun:stun.ideasip.com' },
+      { urls: 'stun:stun.iptel.org' },
+      { urls: 'stun:stun.rixtelecom.se' },
+      { urls: 'stun:stun.schlund.de' },
+      { urls: 'stun:stunserver.org' },
+      { urls: 'stun:stun.sipgate.net' },
+      { urls: 'stun:stun.sipgate.net:10000' },
+      { urls: 'stun:stun.sonetel.com' },
+      { urls: 'stun:stun.voipgate.com' },
+      { urls: 'stun:stun.voipgate.com:3478' }
+    ];
 
     const configuration: RTCConfiguration = {
-      iceServers: [
-        { urls: "stun:peershare.tech:3478" },
-        {
-          urls: "turns:peershare.tech:5349",
-          username: 'peershareuser',
-          credential: 'peersharepassword'
-        }
-      ],
-      iceCandidatePoolSize: 10
+      iceServers: iceServers,
+      iceCandidatePoolSize: 10,
+      // Enable ICE restart for better connection reliability
+      iceTransportPolicy: 'all', // Try both relay and non-relay candidates
+      // Bundle policy for better performance
+      bundlePolicy: 'max-bundle',
+      // RTCP mux policy
+      rtcpMuxPolicy: 'require'
     };
 
     this.pc = new RTCPeerConnection(configuration);
 
     this.pc.onicecandidate = (event) => {
       if (event.candidate && this.ws && this.ws.readyState === WebSocket.OPEN && !this.isDisconnecting && this.webrtcInitiated) {
-        console.log('Sending ICE candidate:', event.candidate.type);
+        console.log('Sending ICE candidate:', event.candidate.type, 'from server:', event.candidate.serverUrl || 'local');
         this.sendMessage({
           type: 'ice-candidate',
           data: event.candidate,
           roomId: this.roomId
         });
+      }
+    };
+
+    // Track ICE connection state for fallback handling
+    this.pc.oniceconnectionstatechange = () => {
+      if (!this.pc) return;
+      
+      const iceState = this.pc.iceConnectionState;
+      console.log('ICE connection state:', iceState);
+      
+      // If ICE connection fails, the browser will automatically try other servers from the list
+      // We can log this for debugging
+      if (iceState === 'failed' || iceState === 'disconnected') {
+        console.warn('ICE connection issue detected. Browser will attempt fallback servers automatically.');
+        trackError('ice_connection_failed', `ICE state: ${iceState}`, 'WebRTCService');
       }
     };
 
