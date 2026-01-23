@@ -2,13 +2,12 @@ import { useState, useEffect } from 'react';
 import { useSEO } from '@/hooks/useSEO';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import PremiumUpgrade from '@/components/PremiumUpgrade';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Check, Crown, Building2, Zap, Shield, Infinity, Users, HeadphonesIcon, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { trackButtonClick } from '@/utils/gtm';
-import { monetizationService, UserTier } from '@/services/monetizationService';
+import { monetizationService } from '@/services/monetizationService';
 import { toast } from '@/hooks/use-toast';
 
 const Upgrade = () => {
@@ -21,12 +20,11 @@ const Upgrade = () => {
 
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('monthly');
   const [selectedTier, setSelectedTier] = useState<'premium' | 'enterprise'>('premium');
-  const [loading, setLoading] = useState(false);
-  const [currentTier, setCurrentTier] = useState<UserTier>(UserTier.FREE);
+  const [loading] = useState(false);
   
   // For now, just use local tier
   useEffect(() => {
-    setCurrentTier(monetizationService.getUserTier());
+    monetizationService.getUserTier();
   }, []);
 
   const plans = {

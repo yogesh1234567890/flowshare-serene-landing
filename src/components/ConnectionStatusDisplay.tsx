@@ -1,6 +1,5 @@
-import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Wifi, Globe, Shield, Activity, Lock, Server } from 'lucide-react';
+import { Activity, Lock, Server } from 'lucide-react';
 
 interface ConnectionStatusDisplayProps {
     connectionState: string;

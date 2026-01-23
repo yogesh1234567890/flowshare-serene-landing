@@ -8,14 +8,13 @@ import { trackButtonClick } from '@/utils/gtm';
 import { toast } from '@/hooks/use-toast';
 
 interface PremiumUpgradeProps {
-  onUpgrade?: () => void;
   showClose?: boolean;
   onClose?: () => void;
 }
 
-export const PremiumUpgrade = ({ onUpgrade, showClose = false, onClose }: PremiumUpgradeProps) => {
+export const PremiumUpgrade = ({ showClose = false, onClose }: PremiumUpgradeProps) => {
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('monthly');
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
   const currentTier = monetizationService.getUserTier();
   const usage = monetizationService.getUsage();
   const limits = monetizationService.getLimits();
@@ -88,14 +87,13 @@ export const PremiumUpgrade = ({ onUpgrade, showClose = false, onClose }: Premiu
                 {usage.transfersToday} / {limits.maxTransfersPerDay === Infinity ? '∞' : limits.maxTransfersPerDay}
               </span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="w-full bg-muted rounded-full h-2">
               <div
                 className="bg-amber-500 h-2 rounded-full transition-all"
                 style={{
-                  width: `${Math.min(
-                    (usage.transfersToday / (limits.maxTransfersPerDay === Infinity ? 1 : limits.maxTransfersPerDay)) * 100,
-                    100
-                  )}%`
+                  width: `${limits.maxTransfersPerDay === Infinity 
+                    ? 0 
+                    : Math.min((usage.transfersToday / limits.maxTransfersPerDay) * 100, 100)}%`
                 }}
               />
             </div>

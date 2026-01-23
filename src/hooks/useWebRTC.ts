@@ -71,7 +71,7 @@ export const useWebRTC = () => {
           description: "Protocol switched successfully (101)",
         });
       },
-      onWebSocketError: (error) => {
+      onWebSocketError: () => {
         setIsWebSocketConnected(false);
         toast({
           title: "🔌 Connection Error",
@@ -174,7 +174,7 @@ export const useWebRTC = () => {
           description: "Protocol switched successfully (101)",
         });
       },
-      onWebSocketError: (error) => {
+      onWebSocketError: () => {
         setIsWebSocketConnected(false);
         toast({
           title: "🔌 Connection Error",

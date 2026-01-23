@@ -1,7 +1,6 @@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { monetizationService } from '@/services/monetizationService';
 import { Link } from 'react-router-dom';
 
 interface UsageLimitWarningProps {

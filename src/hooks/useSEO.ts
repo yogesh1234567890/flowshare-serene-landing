@@ -28,7 +28,6 @@ export const useSEO = ({
 }: SEOProps) => {
   useEffect(() => {
     const currentUrl = canonicalUrl || window.location.href;
-    const siteUrl = 'https://peershare.tech';
     
     // Update title
     document.title = title;

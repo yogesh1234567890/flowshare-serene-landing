@@ -180,9 +180,6 @@ class MonetizationService {
     this.usage.subscriptionExpiresAt = expiresAt;
     this.saveUserTier();
     this.saveUsage();
-    
-    // Sync with backend if available
-    this.syncWithBackend();
   }
 
   /**

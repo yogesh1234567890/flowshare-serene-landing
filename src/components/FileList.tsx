@@ -1,7 +1,5 @@
-import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Send, Trash2, FileText, CheckCircle } from 'lucide-react';
-import { Progress } from "@/components/ui/progress";
 
 interface FileData {
     id: string;

@@ -36,7 +36,7 @@ export const AdBanner = ({
     // Initialize ad
     try {
       if (window.adsbygoogle && adRef.current) {
-        (window.adsbygoogle.loaded = window.adsbygoogle.loaded || []).push({});
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
       }
     } catch (e) {
       console.error('AdSense error:', e);

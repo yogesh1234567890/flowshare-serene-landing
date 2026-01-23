@@ -1,5 +1,4 @@
 
-import React from 'react';
 import { Wifi } from 'lucide-react';
 
 interface ConnectionPulseProps {

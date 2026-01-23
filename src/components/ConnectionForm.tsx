@@ -1,12 +1,10 @@
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { QrCode, Wifi, WifiOff, Globe, Shield, Users } from 'lucide-react';
+import { Shield, Users } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import ConnectionPulse from './ConnectionPulse';
-import { soundEffects } from '@/utils/soundEffects';
 import { trackButtonClick, trackCodeGenerated } from '@/utils/gtm';
 
 interface ConnectionFormProps {

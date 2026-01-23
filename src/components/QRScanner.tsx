@@ -1,8 +1,6 @@
-
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Camera } from 'lucide-react';
 import { soundEffects } from '@/utils/soundEffects';
 
 interface QRScannerProps {
@@ -11,20 +9,6 @@ interface QRScannerProps {
 
 const QRScanner = ({ onScan }: QRScannerProps) => {
   const [manualCode, setManualCode] = useState('');
-  const [isScanning, setIsScanning] = useState(false);
-
-  // Simulate QR scanning with visual feedback
-  const simulateScan = () => {
-    setIsScanning(true);
-    
-    // Simulate scanning delay with visual feedback
-    setTimeout(() => {
-      const mockCode = 'ABC123';
-      setIsScanning(false);
-      soundEffects.playQRScanSound();
-      onScan(mockCode);
-    }, 2000);
-  };
 
   const handleManualEntry = () => {
     if (manualCode.trim()) {
@@ -37,7 +21,7 @@ const QRScanner = ({ onScan }: QRScannerProps) => {
   return (
     <div className="space-y-4">
       <div className="border-t pt-4">
-        <p className="text-sm text-gray-600 mb-2">Or enter code manually:</p>
+        <p className="text-sm text-muted-foreground mb-2">Or enter code manually:</p>
         <div className="flex gap-2">
           <Input
             placeholder="Enter code"

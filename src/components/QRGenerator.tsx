@@ -1,6 +1,4 @@
 
-import React from 'react';
-
 interface QRGeneratorProps {
   value: string;
   size?: number;
