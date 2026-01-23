@@ -54,15 +54,13 @@ export class PersistenceService {
 
   async saveChunk(fileId: string, chunkIndex: number, data: ArrayBuffer) {
       const db = await this.dbPromise;
-      const key = `${fileId}_${chunkIndex}`;
       
       // Save chunk data
       await db.put('chunks', {
-          key,
           fileId,
           chunkIndex,
           data
-      });
+      } as any);
 
       // Update metadata received list (optimize this if performance issue)
       const tx = db.transaction('transfers', 'readwrite');

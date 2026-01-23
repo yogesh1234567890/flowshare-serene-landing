@@ -610,6 +610,7 @@ export class WebRTCService {
         if (this.isSender) {
           this.handleChunkAck(message.data.fileId, message.data.chunkIndex);
         }
+        break;
       case 'file-transfer-accepted':
         if (this.isSender) {
           this.handleFileTransferAccepted(message.data.fileId);

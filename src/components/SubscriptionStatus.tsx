@@ -2,9 +2,8 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Crown, Check, X, Calendar, Loader2 } from 'lucide-react';
+import { Crown, X, Calendar, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { monetizationService, UserTier } from '@/services/monetizationService';
 import { toast } from '@/hooks/use-toast';
 
 type SubscriptionStatus = {
@@ -16,9 +15,8 @@ type SubscriptionStatus = {
 };
 
 export const SubscriptionStatusCard = () => {
-  const [status, setStatus] = useState<SubscriptionStatus | null>(null);
+  const [status] = useState<SubscriptionStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [canceling, setCanceling] = useState(false);
 
   useEffect(() => {
     setLoading(false);
@@ -91,20 +89,10 @@ export const SubscriptionStatusCard = () => {
               variant="outline"
               size="sm"
               onClick={handleCancel}
-              disabled={canceling}
               className="flex-1"
             >
-              {canceling ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Canceling...
-                </>
-              ) : (
-                <>
-                  <X className="w-4 h-4 mr-2" />
-                  Cancel Subscription
-                </>
-              )}
+              <X className="w-4 h-4 mr-2" />
+              Cancel Subscription
             </Button>
           )}
           <Link to="/upgrade" className="flex-1">

@@ -1,8 +1,7 @@
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Upload, Download, Zap, Shield, Users } from 'lucide-react';
+import { ArrowLeft, Upload, Download } from 'lucide-react';
 import ConnectionForm from './ConnectionForm';
 import DownloadProgress from './DownloadProgress';
 import ConnectionStatusDisplay from './ConnectionStatusDisplay';
@@ -17,7 +16,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
 import { trackButtonClick } from '@/utils/gtm';
 
 const FileReceive = () => {
